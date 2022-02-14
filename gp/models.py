@@ -1,6 +1,8 @@
 import numpy as np
 from numpy import pi, log, sqrt
 from numpy.linalg import solve, cholesky
+from scipy import rand
+from scipy.stats import multivariate_normal
 
 # The classic GP Regressor
 class GPRegressor:
@@ -85,3 +87,11 @@ class GPRegressor:
                 return f, sqrt(np.diag(cov))
         else:
             return f
+        
+    """
+    epsilon: positive adjustement factor for the covariance matrix to cope with singularity
+    """
+    def sample(self, X, size=1, epsilon=1e-10, random_state=None):
+        f, cov = self.predict(X, return_cov=True)
+        K = cov + epsilon*np.identity(len(X))
+        return multivariate_normal(mean=f, cov=K).rvs(size=size, random_state=random_state)
