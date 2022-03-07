@@ -1,4 +1,4 @@
-from math import exp
+from math import exp, log
 
 # Abstract class
 class Kernel:
@@ -13,8 +13,8 @@ class Kernel:
 class RBF(Kernel):
     def __init__(self, input_dim, l=1, sigma=1):
         parameters = {
-            "l": l,
-            "sigma": sigma 
+            "log_l": log(l),
+            "log_sigma": log(sigma) 
         }
         super().__init__(input_dim, parameters)
     
@@ -23,13 +23,13 @@ class RBF(Kernel):
         for i in range(self._d):
             sqr_sum = (x[i]-y[i])**2
         
-        ker = self._param["sigma"]**2 *exp( - sqr_sum/(2*self._param["l"]**2) )
+        ker = exp(2*self._param["log_sigma"]) *exp( - sqr_sum*exp(-2*self._param["log_l"])/2 )
 
         if not return_grad:
             return ker
         else:
             grad = {
-                "l": sqr_sum*ker/self._param["l"]**3,
-                "sigma": 2*ker/self._param["sigma"]
+                "log_l": sqr_sum*exp(-2*self._param["log_l"])*ker,
+                "log_sigma":2*ker
             }
             return ker, grad

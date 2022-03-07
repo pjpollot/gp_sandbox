@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import pi, log, sqrt
+from numpy import pi, exp, log, sqrt
 from numpy.linalg import solve, cholesky, inv
 from scipy import rand
 from scipy.stats import multivariate_normal
@@ -16,7 +16,7 @@ class GPRegressor:
         self._d = input_dim
         self._kernel = kernel_function
         self._param = kernel_function._param
-        self._param["noise"] = noise
+        self._param["log_noise"] = log(noise)
         self._eps = epsilon
 
         self._grad = dict()
@@ -30,9 +30,30 @@ class GPRegressor:
         self._alpha = None
         self._loglik = None
 
-    """
-    epsilon: adjusting factor, make sure the covariance will be invertible
-    """
+    def set_param(self, param, verbose=True):
+        for key in self._kernel._param:
+            print(key)
+            if key in param:
+                self._kernel._param[key] = param[key]
+                self._param[key] = param[key]
+        if "log_noise" in param:
+            self._param["log_noise"] = param["log_noise"]
+
+        self._grad = dict()
+        for key in self._param:
+            self._grad[key] = None  
+
+        self._n = 0
+        self._X = None
+        self._y = None
+        self._chol = None
+        self._alpha = None
+        self._loglik = None
+
+        if verbose:
+            print("GP's parameters successfully changed! the Regressor needs to be trained again.")
+        return self._param
+    
     def fit(self, X, y):
         self._n = len(X)
         self._X = X
@@ -48,11 +69,12 @@ class GPRegressor:
             for j in range(i+1):
                 M[i,j], g = self._kernel.evaluate(X[i,:],X[j,:], return_grad=True)
                 M[j,i] = M[i,j]
+                # Additionally, if we're in the diagonal
                 if i==j:
-                    M[i,i] += self._param["noise"]**2 + self._eps
-                    g["noise"] = 2*self._param["noise"]
+                    M[i,i] += exp(2*self._param["log_noise"]) + self._eps
+                    g["log_noise"] = 2*exp(2*self._param["log_noise"])
                 else:
-                    g["noise"] = 0
+                    g["log_noise"] = 0
                 
                 for key in self._param:
                     grad_M[key][i,j] = g[key]
@@ -83,7 +105,8 @@ class GPRegressor:
             self._grad[key] = np.trace(Q)/2
         
         return self
-    
+
+
     """
     return_cov: return the covariance over the predictions
     return_std: return the standard deviation over the predictions
