@@ -32,7 +32,6 @@ class GPRegressor:
 
     def set_param(self, param, verbose=True):
         for key in self._kernel._param:
-            print(key)
             if key in param:
                 self._kernel._param[key] = param[key]
                 self._param[key] = param[key]
@@ -106,7 +105,29 @@ class GPRegressor:
             self._grad[key] = np.trace(Q)/2
         
         return self
+    
+    def fit_optimize(self, X, y, lr=1e-2, n_iter=100, verbose=True):
 
+        if verbose:
+            print("# Starting optimization")
+
+        for it in range(n_iter):
+            self.fit(X,y)
+
+            if verbose:
+                print(
+                    "#{}: log_lik={}; parameters={}".format(
+                        it+1, self._loglik, self._param
+                    )
+                )
+
+            updated_param = dict()
+            for key in self._param:
+                updated_param[key] = self._param[key] + lr * self._grad[key]
+
+            self.set_param(updated_param, verbose=False)
+        
+        return self.fit(X,y)
 
     """
     return_cov: return the covariance over the predictions
