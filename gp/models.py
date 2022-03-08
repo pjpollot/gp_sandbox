@@ -78,6 +78,7 @@ class GPRegressor:
                 
                 for key in self._param:
                     grad_M[key][i,j] = g[key]
+                    grad_M[key][j,i] = g[key] # By symmetry
             
         ## Return its Cholesky matrix
         self._chol = cholesky(M)
