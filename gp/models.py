@@ -4,6 +4,10 @@ from numpy.linalg import solve, cholesky, inv
 from scipy import rand
 from scipy.stats import multivariate_normal
 
+import jax.numpy as jnp
+import jax.numpy.linalg as jlin
+from jax import grad
+
 # The classic GP Regressor
 class GPRegressor:
     """
@@ -163,3 +167,55 @@ class GPRegressor:
                 return f, sqrt(np.diag(cov))
         else:
             return f
+
+class SGPRegressor:
+    """
+    input_dim: the input dimension
+    kernel_function: the kernel function
+    noise: the noise parameter (sigma_n) in the regression
+    epsilon: correction hyperparameter to avoid singular covariance matrix
+    """
+    def __init__(self, input_dim, kernel_function, n_inducing, noise=1e-10, epsilon=1e-10):
+        self._d = input_dim
+        self._kernel = kernel_function
+        self._n_inducing = n_inducing
+        self._param = kernel_function._param
+        self._param["log_noise"] = log(noise)
+        self._eps = epsilon
+
+        self._grad = dict()
+        for key in self._param:
+            self._grad[key] = None        
+
+        self._n = 0
+        self._X = None
+        self._y = None
+        self._elbo = None
+        self._Knn = None
+        self._Kmm = None
+        self._Kmn = None
+
+    
+    def set_param(self, param, verbose=True):
+        for key in self._kernel._param:
+            if key in param:
+                self._kernel._param[key] = param[key]
+                self._param[key] = param[key]
+        if "log_noise" in param:
+            self._param["log_noise"] = param["log_noise"]
+
+        self._grad = dict()
+        for key in self._param:
+            self._grad[key] = None  
+
+        self._n = 0
+        self._X = None
+        self._y = None
+        self._elbo = None
+        self._Knn = None
+        self._Kmm = None
+        self._Kmn = None
+
+        if verbose:
+            print("GP's parameters successfully changed! the Regressor needs to be trained again.")
+        return self._param
