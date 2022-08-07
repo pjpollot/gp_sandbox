@@ -6,8 +6,8 @@ from scipy.stats import multivariate_normal
 
 # Abstract GP class
 class Abstract_GP:
-    def __init__(self, input_dim, kernel_function, epsilon):
-        self._d = input_dim
+    def __init__(self, kernel_function, epsilon):
+        self._d = kernel_function._d
         self._kernel = kernel_function
         self._param = kernel_function._param
         self._eps = epsilon
@@ -25,8 +25,8 @@ class GPRegressor(Abstract_GP):
     noise: the noise parameter (sigma_n) in the regression
     epsilon: correction hyperparameter to avoid singular covariance matrix
     """
-    def __init__(self, input_dim, kernel_function, noise=1e-10, epsilon=1e-10):
-        super().__init__(input_dim, kernel_function, epsilon)
+    def __init__(self, kernel_function, noise=1e-10, epsilon=1e-10):
+        super().__init__(kernel_function, epsilon)
         self._param["log_noise"] = log(noise)
 
         self._grad = dict()
@@ -181,8 +181,8 @@ GP Binary Classifier
 Output format: 1 and -1.
 """
 class GPBinaryClassifier(Abstract_GP):
-    def __init__(self, input_dim, kernel_function, sigmoid_function, epsilon=1e-10):
-        super().__init__(input_dim, kernel_function, epsilon)
+    def __init__(self, kernel_function, sigmoid_function, epsilon=1e-10):
+        super().__init__(kernel_function, epsilon)
         self._sigmoid = sigmoid_function
 
         self._map = None
@@ -207,9 +207,9 @@ class GPBinaryClassifier(Abstract_GP):
             grad_loglik = np.zeros(self._n)
             for i in range(self._n):
                 z = self._y[i]*f[i]
-                s, s_prime, s_second = self._sigmoid.evaluate(z, return_derivatives=True)
-                W[i,i] =  ( s_prime/s )**2 - s_second/s
-                grad_loglik[i] = self._y[i]*s_prime/s
+                s, log_s_prime, log_s_second = self._sigmoid.evaluate(z, return_log_derivatives=True)
+                W[i,i] =  -log_s_second
+                grad_loglik[i] = self._y[i]*log_s_prime
             sqrt_W = sqrt(W)
 
             L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )

@@ -8,12 +8,12 @@ one method
 
 # The standard logistic function
 class Logistic:
-    def evaluate(z, return_derivatives=False):
+    def evaluate(self, z, return_log_derivatives=False):
         s = 1/(1+exp(-z))
 
-        if return_derivatives:
-            s_prime = s*(1-s)
-            s_second = s_prime*(1-2*s)
-            return s, s_prime, s_second
-        
-        return s
+        if return_log_derivatives:
+            log_s_prime = 1-s
+            log_s_second = -s*(1-s)
+            return s, log_s_prime, log_s_second
+        else:
+            return s

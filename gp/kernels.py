@@ -3,8 +3,7 @@ from math import exp, log
 """
 Kernels' abstract class
 common methods:
-evaluate: return the evaluation of the kernel, and if wanted, its gradient
-
+-> evaluate: return the evaluation of the kernel, and if wanted, its gradient
 """
 class Kernel:
     def __init__(self, input_dim, parameters):
@@ -13,7 +12,7 @@ class Kernel:
 
 # A case in point
 class RBF(Kernel):
-    def __init__(self, input_dim, l=1, sigma=1):
+    def __init__(self, input_dim, l=1., sigma=1.):
         parameters = {
             "log_l": log(l),
             "log_sigma": log(sigma) 
