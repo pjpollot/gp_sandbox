@@ -1,5 +1,5 @@
 import numpy as np
-from numpy import pi, exp, log, sqrt
+from numpy import pi, exp, log, sqrt, identity
 from numpy.linalg import solve, cholesky, inv
 from scipy import rand
 from scipy.stats import multivariate_normal
@@ -15,6 +15,7 @@ class Abstract_GP:
         self._n = 0
         self._X = None
         self._y = None
+        self._loglik = None
 
 # The classic GP Regressor
 class GPRegressor(Abstract_GP):
@@ -34,7 +35,6 @@ class GPRegressor(Abstract_GP):
 
         self._chol = None
         self._alpha = None
-        self._loglik = None
 
     def set_param(self, param, verbose=True):
         for key in self._kernel._param:
@@ -61,8 +61,8 @@ class GPRegressor(Abstract_GP):
     
     def fit(self, X, y):
         self._n = len(X)
-        self._X = X
-        self._y = y
+        self._X = X.copy()
+        self._y = y.copy()
         
         # Calculate the matrix K + sigma_n * I and its gradient
         M = np.zeros((self._n, self._n))
@@ -173,7 +173,7 @@ class GPRegressor(Abstract_GP):
     def sample(self, X, size=1):
         p = len(X)
         mu, cov = self.predict(X, return_cov=True)
-        cov += self._eps*np.identity(p) # adjustement factor
+        cov += self._eps*identity(p) # adjustement factor
 
         return multivariate_normal.rvs(mean=mu, cov=cov, size=size)
 """
@@ -184,3 +184,46 @@ class GPBinaryClassifier(Abstract_GP):
     def __init__(self, input_dim, kernel_function, sigmoid_function, epsilon=1e-10):
         super().__init__(input_dim, kernel_function, epsilon)
         self._sigmoid = sigmoid_function
+
+        self._map = None
+
+    def fit(self, X, y, laplace_approx_n_iter=100):
+        self._n = len(X)
+        self._X = X.copy()
+        self._y = y.copy()
+
+        # Compute the covariance matrix
+        K = np.zeros((self._n, self._n))
+        for i in range(self._n):
+            for j in range(i+1):
+                K[i,j] = self._kernel.evaluate(X[i,:], X[j,:])
+                K[j,i] = K[i,j]
+
+        # Laplace approximation using Newton approximation
+        f = np.zeros(self._n)
+        for it in range(laplace_approx_n_iter):
+            # Compute W and its square root (supposing it is a positive diagonal matrix), and the gradient of the loglik p(y|f)
+            W = np.zeros((self._n, self._n))
+            grad_loglik = np.zeros(self._n)
+            for i in range(self._n):
+                z = self._y[i]*f[i]
+                s, s_prime, s_second = self._sigmoid.evaluate(z, return_derivatives=True)
+                W[i,i] =  ( s_prime/s )**2 - s_second/s
+                grad_loglik[i] = self._y[i]*s_prime/s
+            sqrt_W = sqrt(W)
+
+            L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
+            b = W @ f + grad_loglik
+            a = b - solve(sqrt_W @ L.T, solve(L, sqrt_W @ K @ b) )
+            
+            f = K @ a
+        
+        # derive the MAP
+        self._map = f
+        # and compute the approximate log-likelihood
+        self._loglik = -f @ a
+        for i in range(self._n):
+            z = self._y[i]*f[i]
+            s = self._sigmoid.evaluate(z)
+            self._loglik += log(s) - log(L[i,i])
+        return self
