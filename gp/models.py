@@ -181,5 +181,6 @@ GP Binary Classifier
 Output format: 1 and -1.
 """
 class GPBinaryClassifier(Abstract_GP):
-    def __init__(self, input_dim, kernel_function, epsilon=1e-10):
+    def __init__(self, input_dim, kernel_function, sigmoid_function, epsilon=1e-10):
         super().__init__(input_dim, kernel_function, epsilon)
+        self._sigmoid = sigmoid_function
