@@ -4,12 +4,20 @@ from numpy.linalg import solve, cholesky, inv
 from scipy import rand
 from scipy.stats import multivariate_normal
 
-import jax.numpy as jnp
-import jax.numpy.linalg as jlin
-from jax import grad
+# Abstract GP class
+class Abstract_GP:
+    def __init__(self, input_dim, kernel_function, epsilon):
+        self._d = input_dim
+        self._kernel = kernel_function
+        self._param = kernel_function._param
+        self._eps = epsilon
+
+        self._n = 0
+        self._X = None
+        self._y = None
 
 # The classic GP Regressor
-class GPRegressor:
+class GPRegressor(Abstract_GP):
     """
     input_dim: the input dimension
     kernel_function: the kernel function
@@ -17,19 +25,13 @@ class GPRegressor:
     epsilon: correction hyperparameter to avoid singular covariance matrix
     """
     def __init__(self, input_dim, kernel_function, noise=1e-10, epsilon=1e-10):
-        self._d = input_dim
-        self._kernel = kernel_function
-        self._param = kernel_function._param
+        super().__init__(input_dim, kernel_function, epsilon)
         self._param["log_noise"] = log(noise)
-        self._eps = epsilon
 
         self._grad = dict()
         for key in self._param:
             self._grad[key] = None        
 
-        self._n = 0
-        self._X = None
-        self._y = None
         self._chol = None
         self._alpha = None
         self._loglik = None
@@ -219,3 +221,8 @@ class SGPRegressor:
         if verbose:
             print("GP's parameters successfully changed! the Regressor needs to be trained again.")
         return self._param
+
+# GP Classifier
+class GPClassifier(Abstract_GP):
+    def __init__(self, input_dim, kernel_function, epsilon=1e-10):
+        super().__init__(input_dim, kernel_function, epsilon)
