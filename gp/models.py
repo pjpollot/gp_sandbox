@@ -214,7 +214,7 @@ class GPBinaryClassifier(Abstract_GP):
 
             L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
             b = W @ f + grad_loglik
-            a = b - solve(sqrt_W @ L.T, solve(L, sqrt_W @ K @ b) )
+            a = b - sqrt_W @ solve( L.T, solve(L, sqrt_W @ K @ b) )
             
             f = K @ a
         
