@@ -170,59 +170,16 @@ class GPRegressor(Abstract_GP):
         else:
             return f
 
-class SGPRegressor:
-    """
-    input_dim: the input dimension
-    kernel_function: the kernel function
-    noise: the noise parameter (sigma_n) in the regression
-    epsilon: correction hyperparameter to avoid singular covariance matrix
-    """
-    def __init__(self, input_dim, kernel_function, n_inducing, noise=1e-10, epsilon=1e-10):
-        self._d = input_dim
-        self._kernel = kernel_function
-        self._n_inducing = n_inducing
-        self._param = kernel_function._param
-        self._param["log_noise"] = log(noise)
-        self._eps = epsilon
+    def sample(self, X, size=1):
+        p = len(X)
+        mu, cov = self.predict(X, return_cov=True)
+        cov += self._eps*np.identity(p) # adjustement factor
 
-        self._grad = dict()
-        for key in self._param:
-            self._grad[key] = None        
-
-        self._n = 0
-        self._X = None
-        self._y = None
-        self._elbo = None
-        self._Knn = None
-        self._Kmm = None
-        self._Kmn = None
-
-    
-    def set_param(self, param, verbose=True):
-        for key in self._kernel._param:
-            if key in param:
-                self._kernel._param[key] = param[key]
-                self._param[key] = param[key]
-        if "log_noise" in param:
-            self._param["log_noise"] = param["log_noise"]
-
-        self._grad = dict()
-        for key in self._param:
-            self._grad[key] = None  
-
-        self._n = 0
-        self._X = None
-        self._y = None
-        self._elbo = None
-        self._Knn = None
-        self._Kmm = None
-        self._Kmn = None
-
-        if verbose:
-            print("GP's parameters successfully changed! the Regressor needs to be trained again.")
-        return self._param
-
-# GP Classifier
-class GPClassifier(Abstract_GP):
+        return multivariate_normal.rvs(mean=mu, cov=cov, size=size)
+"""
+GP Binary Classifier
+Output format: 1 and -1.
+"""
+class GPBinaryClassifier(Abstract_GP):
     def __init__(self, input_dim, kernel_function, epsilon=1e-10):
         super().__init__(input_dim, kernel_function, epsilon)
