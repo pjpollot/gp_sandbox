@@ -195,7 +195,7 @@ class GPBinaryClassifier(Abstract_GP):
         self._gmap = None
         self._sqrt_W = None
 
-    def fit(self, X, y, laplace_approx_n_iter=100):
+    def fit(self, X, y, laplace_approx_n_iter=500):
         self._n = len(X)
         self._X = X.copy()
         self._y = y.copy()
@@ -204,21 +204,22 @@ class GPBinaryClassifier(Abstract_GP):
         K = np.zeros((self._n, self._n))
         for i in range(self._n):
             for j in range(i+1):
-                K[i,j] = self._kernel.evaluate(X[i,:], X[j,:])
+                K[i,j] = self._kernel.evaluate(self._X[i,:], self._X[j,:])
                 K[j,i] = K[i,j]
 
         # Laplace approximation using Newton approximation
         f = np.zeros(self._n)
+        W = np.zeros((self._n, self._n))
+        sqrt_W = np.zeros((self._n, self._n))
+        grad_loglik = np.zeros(self._n)
         for it in range(laplace_approx_n_iter):
             # Compute W and its square root (supposing it is a positive diagonal matrix), and the gradient of the loglik p(y|f)
-            W = np.zeros((self._n, self._n))
-            grad_loglik = np.zeros(self._n)
             for i in range(self._n):
                 z = self._y[i]*f[i]
                 s, log_s_prime, log_s_second = self._sigmoid.evaluate(z, return_log_derivatives=True)
                 W[i,i] =  -log_s_second
+                sqrt_W[i,i] = sqrt(W[i,i])
                 grad_loglik[i] = self._y[i]*log_s_prime
-            sqrt_W = sqrt(W)
 
             L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
             b = W @ f + grad_loglik
@@ -246,7 +247,7 @@ class GPBinaryClassifier(Abstract_GP):
             self._loglik -= log(self._chol[i,i])
         b = W @ f + self._gmap
         a = b - self._sqrt_W @ solve( self._chol.T, solve(self._chol, self._sqrt_W @ K @ b) )
-        self._loglik -= f @ a
+        self._loglik -= np.dot(self._map, a)/2
 
         return self
     
