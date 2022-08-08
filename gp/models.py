@@ -1,9 +1,10 @@
 import numpy as np
 from numpy import pi, exp, log, sqrt, identity
 from numpy.linalg import solve, cholesky, inv
-from numpy.polynomial.hermite import hermgauss
 from scipy import rand
 from scipy.stats import multivariate_normal
+
+from .approximations import hermite_quadrature
 
 # Abstract GP class
 class Abstract_GP:
@@ -182,6 +183,10 @@ GP Binary Classifier
 Output format: 1 and -1.
 """
 class GPBinaryClassifier(Abstract_GP):
+
+    hermite_normalizer = 1/sqrt(pi)
+    sqrt_2 = sqrt(2)
+
     def __init__(self, kernel_function, sigmoid_function, epsilon=1e-10):
         super().__init__(kernel_function, epsilon)
         self._sigmoid = sigmoid_function
@@ -255,12 +260,14 @@ class GPBinaryClassifier(Abstract_GP):
         v = solve(self._chol, self._sqrt_W @ k)
         prior_var = self._kernel.evaluate(x, x)
 
-        std = sqrt(prior_var - np.dot(v, v))
+        var = prior_var - np.dot(v, v)
 
-        herm_z, herm_weight = hermgauss(hermite_quad_deg)
-        proba = 0
-        for j in range(hermite_quad_deg):
-            proba += herm_weight[j]*self._sigmoid.evaluate(mean+std*herm_z[j])
+        proba = hermite_quadrature(
+            func=self._sigmoid.evaluate, 
+            deg=hermite_quad_deg, 
+            mean=mean, 
+            var=var
+        )
         
         return proba
 
