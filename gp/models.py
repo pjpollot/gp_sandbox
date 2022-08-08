@@ -268,10 +268,10 @@ class GPBinaryClassifier(Abstract_GP):
             mean=mean, 
             var=var
         )
-        
+
         return proba
 
-    
+    """
     def sample(self, X, size=1, return_mean_cov=False):
         p = len(X)
         k = np.zeros((self._n, p))
@@ -297,4 +297,5 @@ class GPBinaryClassifier(Abstract_GP):
             return samples, mean, cov
         
         return samples
+    """
         
