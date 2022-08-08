@@ -1,6 +1,7 @@
 import numpy as np
 from numpy import pi, exp, log, sqrt, identity
 from numpy.linalg import solve, cholesky, inv
+from numpy.polynomial.hermite import hermgauss
 from scipy import rand
 from scipy.stats import multivariate_normal
 
@@ -16,6 +17,7 @@ class Abstract_GP:
         self._X = None
         self._y = None
         self._loglik = None
+        self._chol = None
 
 # The classic GP Regressor
 class GPRegressor(Abstract_GP):
@@ -33,7 +35,6 @@ class GPRegressor(Abstract_GP):
         for key in self._param:
             self._grad[key] = None        
 
-        self._chol = None
         self._alpha = None
 
     def set_param(self, param, verbose=True):
@@ -51,7 +52,7 @@ class GPRegressor(Abstract_GP):
         self._n = 0
         self._X = None
         self._y = None
-        self._chol = None
+
         self._alpha = None
         self._loglik = None
 
@@ -186,6 +187,8 @@ class GPBinaryClassifier(Abstract_GP):
         self._sigmoid = sigmoid_function
 
         self._map = None
+        self._gmap = None
+        self._sqrt_W = None
 
     def fit(self, X, y, laplace_approx_n_iter=100):
         self._n = len(X)
@@ -220,10 +223,71 @@ class GPBinaryClassifier(Abstract_GP):
         
         # derive the MAP
         self._map = f
-        # and compute the approximate log-likelihood
-        self._loglik = -f @ a
+        # Compute the marginal loglik and the other variables
+        self._loglik = 0
+        self._gmap = np.zeros(self._n)
         for i in range(self._n):
             z = self._y[i]*f[i]
-            s = self._sigmoid.evaluate(z)
-            self._loglik += log(s) - log(L[i,i])
+            s, log_s_prime, log_s_second = self._sigmoid.evaluate(z, return_log_derivatives=True)
+    
+            self._loglik += log(s)
+            self._gmap[i] = self._y[i]*log_s_prime
+            W[i,i] = -log_s_second
+
+        self._sqrt_W = sqrt(W)
+
+        self._chol = cholesky( identity(self._n) + self._sqrt_W @ K @ self._sqrt_W )
+        for i in range(self._n):
+            self._loglik -= log(self._chol[i,i])
+        b = W @ f + self._gmap
+        a = b - self._sqrt_W @ solve( self._chol.T, solve(self._chol, self._sqrt_W @ K @ b) )
+        self._loglik -= f @ a
+
         return self
+    
+    def predict(self, x, hermite_quad_deg=10):
+        k = np.zeros(self._n)
+        for i in range(self._n):
+            k[i] = self._kernel.evaluate(self._X[i,:], x)
+
+        mean = np.dot(k, self._gmap)
+        
+        v = solve(self._chol, self._sqrt_W @ k)
+        prior_var = self._kernel.evaluate(x, x)
+
+        std = sqrt(prior_var - np.dot(v, v))
+
+        herm_z, herm_weight = hermgauss(hermite_quad_deg)
+        proba = 0
+        for j in range(hermite_quad_deg):
+            proba += herm_weight[j]*self._sigmoid.evaluate(mean+std*herm_z[j])
+        
+        return proba
+
+    
+    def sample(self, X, size=1, return_mean_cov=False):
+        p = len(X)
+        k = np.zeros((self._n, p))
+        for i in range(self._n):
+            for j in range(p):
+                k[i,j] = self._kernel.evaluate(self._X[i,:], X[j,:])
+        
+        mean = k.T @ self._gmap
+        
+        V = solve(self._chol, self._sqrt_W @ k)
+
+        prior_cov = np.zeros((p, p))
+        for i in range(p):
+            for j in range(i+1):
+                prior_cov[i,j] = self._kernel.evaluate(X[i,:], X[j,:])
+                prior_cov[j,i] = prior_cov[i,j]
+        
+        cov = prior_cov - V.T @ V
+
+        samples = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
+
+        if return_mean_cov:
+            return samples, mean, cov
+        
+        return samples
+        
