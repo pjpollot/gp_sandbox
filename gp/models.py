@@ -255,6 +255,9 @@ class GPBinaryClassifier(Abstract_GP):
         self._grad_mode_loglik = grad_loglik
         return self
     
+    def fit_optimize(self, X, y, laplace_approx_n_iter=10, verbose=False):
+        pass
+    
     def predict(self, x, return_var=False, hermite_quad_deg=50):
         k = np.zeros(self._n)
         for i in range(self._n):
@@ -273,7 +276,7 @@ class GPBinaryClassifier(Abstract_GP):
             mean=mean, 
             var=var
         )
-        
+
         if return_var:
             return proba, var
 
