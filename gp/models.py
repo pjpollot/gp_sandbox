@@ -255,7 +255,7 @@ class GPBinaryClassifier(Abstract_GP):
         self._grad_mode_loglik = grad_loglik
         return self
     
-    def predict(self, x, hermite_quad_deg=50):
+    def predict(self, x, return_var=False, hermite_quad_deg=50):
         k = np.zeros(self._n)
         for i in range(self._n):
             k[i] = self._kernel.evaluate(self._X[i, :], x)
@@ -273,4 +273,8 @@ class GPBinaryClassifier(Abstract_GP):
             mean=mean, 
             var=var
         )
+        
+        if return_var:
+            return proba, var
+
         return proba
