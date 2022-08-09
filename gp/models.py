@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from re import M
 import numpy as np
 from numpy import pi, exp, log, sqrt, identity
@@ -20,23 +21,14 @@ class Abstract_GP:
         self._y = None
         self._loglik = None
         self._chol = None
-    
-    "If X2 is None, the covariance matrix is calculated only on the set of points X1"
-    def compute_covariance_matrix(self, X1, X2=None):
-        n = len(X1)
-        if X2:
-            p = len(X2)
-            K = np.zeros((n,p))
-            for i in range(n):
-                for j in range(p):
-                    K[i,j] = self._kernel.evaluate(X1[i, :], X2[j, :])
-        else:
-            K = np.zeros((n,n))
-            for i in range(n):
-                for j in range(i+1):
-                    K[i,j] = self._kernel.evaluate(X1[i, :], X1[j, :])
-                    K[j,i] = K[i,j]
-        return K
+
+    @abstractmethod
+    def fit(self, X, y):
+        pass
+
+    @abstractmethod
+    def predict(self, X):
+        pass
 
 
 # The classic GP Regressor
@@ -219,7 +211,12 @@ class GPBinaryClassifier(Abstract_GP):
         self._X = X.copy()
         self._y = y.copy()
 
-        K = self.compute_covariance_matrix(self._X)
+        # compute the covariance matrix
+        K = np.zeros((self._n, self._n))
+        for i in range(self._n):
+            for j in range(self._n):
+                K[i,j] = self._kernel.evaluate(self._X[i,:], self._X[j,:])
+                K[j,i] = K[i,j]
 
         # Laplace approximation using Newton algorithm
         f = 0. + np.zeros(self._n)

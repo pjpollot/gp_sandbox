@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from math import exp, log
 
 """
@@ -5,13 +6,17 @@ Kernels' abstract class
 common methods:
 -> evaluate: return the evaluation of the kernel, and if wanted, its gradient
 """
-class Kernel:
+class Abstract_kernel:
     def __init__(self, input_dim, parameters):
         self._d = input_dim
         self._param = parameters
 
-# A case in point
-class RBF(Kernel):
+    @abstractmethod
+    def evaluate(self, x, y, return_grad):
+            pass
+
+# A case in point, the Radial Basis Function
+class RBF(Abstract_kernel):
     def __init__(self, input_dim, l=1., sigma=1.):
         parameters = {
             "log_l": log(l),
