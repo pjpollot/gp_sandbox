@@ -20,6 +20,24 @@ class Abstract_GP:
         self._y = None
         self._loglik = None
         self._chol = None
+    
+    "If X2 is None, the covariance matrix is calculated only on the set of points X1"
+    def compute_covariance_matrix(self, X1, X2=None):
+        n = len(X1)
+        if X2:
+            p = len(X2)
+            K = np.zeros((n,p))
+            for i in range(n):
+                for j in range(p):
+                    K[i,j] = self._kernel.evaluate(X1[i, :], X2[j, :])
+        else:
+            K = np.zeros((n,n))
+            for i in range(n):
+                for j in range(i+1):
+                    K[i,j] = self._kernel.evaluate(X1[i, :], X1[j, :])
+                    K[j,i] = K[i,j]
+        return K
+
 
 # The classic GP Regressor
 class GPRegressor(Abstract_GP):
@@ -201,12 +219,7 @@ class GPBinaryClassifier(Abstract_GP):
         self._X = X.copy()
         self._y = y.copy()
 
-        # Compute the covariance matrix
-        K = np.zeros((self._n, self._n))
-        for i in range(self._n):
-            for j in range(i+1):
-                K[i,j] = self._kernel.evaluate(self._X[i,:], self._X[j,:])
-                K[j,i] = K[i,j]
+        K = self.compute_covariance_matrix(self._X)
 
         # Laplace approximation using Newton algorithm
         f = 0. + np.zeros(self._n)
@@ -261,7 +274,7 @@ class GPBinaryClassifier(Abstract_GP):
     def predict(self, x, return_var=False, hermite_quad_deg=50):
         k = np.zeros(self._n)
         for i in range(self._n):
-            k[i] = self._kernel.evaluate(self._X[i, :], x)
+            k[i] = self._kernel.evaluate(self._X[i,:], x)
         
         mean = np.dot(k, self._grad_mode_loglik)
         
