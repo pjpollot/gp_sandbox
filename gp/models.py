@@ -232,71 +232,11 @@ class GPBinaryClassifier(Abstract_GP):
                 print(f'objective={objective}')
          
         # Compute the log-marginal-likelihood
-        s_list = np.zeros(self._n)
+        self._loglik = objective
         for i in range(self._n):
-                z = self._y[i]*f[i]
-                s_list[i], lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
-                grad_loglik[i] = self._y[i]*lsp
-                W[i,i] = -lspp
-                sqrt_W[i,i] = sqrt(W[i,i])
-        L = cholesky(identity(self._n)+sqrt_W @ K @ sqrt_W)
-        b = W @ f + grad_loglik
-        a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
-
-        self._loglik = -np.dot(a, f)/2
-        for i in range(self._n):
-            self._loglik += log(s_list[i]) - log(L[i,i])
-
-        # Other attributions
+            self._loglik -= log(L[i,i])
         self._mode = f
         return self
     
-    """
     def predict(self, x, hermite_quad_deg=10):
-        k = np.zeros(self._n)
-        for i in range(self._n):
-            k[i] = self._kernel.evaluate(self._X[i,:], x)
-
-        mean = np.dot(k, self._gmap)
-        
-        v = solve(self._chol, self._sqrt_W @ k)
-        prior_var = self._kernel.evaluate(x, x)
-
-        var = prior_var - np.dot(v, v)
-
-        proba = hermite_quadrature(
-            func=self._sigmoid.evaluate, 
-            deg=hermite_quad_deg, 
-            mean=mean, 
-            var=var
-        )
-
-        return proba
-
-    def sample(self, X, size=1, return_mean_cov=False):
-        p = len(X)
-        k = np.zeros((self._n, p))
-        for i in range(self._n):
-            for j in range(p):
-                k[i,j] = self._kernel.evaluate(self._X[i,:], X[j,:])
-        
-        mean = k.T @ self._gmap
-        
-        V = solve(self._chol, self._sqrt_W @ k)
-
-        prior_cov = np.zeros((p, p))
-        for i in range(p):
-            for j in range(i+1):
-                prior_cov[i,j] = self._kernel.evaluate(X[i,:], X[j,:])
-                prior_cov[j,i] = prior_cov[i,j]
-        
-        cov = prior_cov - V.T @ V
-
-        samples = multivariate_normal.rvs(mean=mean, cov=cov, size=size)
-
-        if return_mean_cov:
-            return samples, mean, cov
-        
-        return samples
-    """
-        
+        pass
