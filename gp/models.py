@@ -1,3 +1,4 @@
+from re import M
 import numpy as np
 from numpy import pi, exp, log, sqrt, identity
 from numpy.linalg import solve, cholesky, inv
@@ -227,16 +228,49 @@ class GPBinaryClassifier(Abstract_GP):
             b = W @ f + grad_loglik
             a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
             f = K @ a
-            objective += -np.dot(a,f)/2
+            objective -= np.dot(a,f)/2
             if verbose:
                 print(f'objective={objective}')
          
-        # Compute the log-marginal-likelihood
-        self._loglik = objective
+        # END LOOP: compute the log-marginal-likelihood
+        self._loglik = 0
+        for i in range(self._n):
+            z = self._y[i]*f[i]
+            s, lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
+            grad_loglik[i] = self._y[i]*lsp
+            W[i,i] = -lspp
+            sqrt_W[i,i] = sqrt(W[i,i])
+            self._loglik += log(s)
+        L = cholesky(identity(self._n)+sqrt_W @ K @ sqrt_W)
+        b = W @ f + grad_loglik
+        a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
+        self._loglik -= np.dot(a,f)/2
         for i in range(self._n):
             self._loglik -= log(L[i,i])
+
+        # As for the other attributes
         self._mode = f
+        self._chol = L
+        self._sqrt_W = sqrt_W
+        self._grad_mode_loglik = grad_loglik
         return self
     
-    def predict(self, x, hermite_quad_deg=10):
-        pass
+    def predict(self, x, hermite_quad_deg=50):
+        k = np.zeros(self._n)
+        for i in range(self._n):
+            k[i] = self._kernel.evaluate(self._X[i, :], x)
+        
+        mean = np.dot(k, self._grad_mode_loglik)
+        
+        v = solve(self._chol, self._sqrt_W @ k)
+        prior_var = self._kernel.evaluate(x, x)
+
+        var = prior_var - np.dot(v, v)
+
+        proba = hermite_quadrature(
+            func=self._sigmoid.evaluate,
+            deg=hermite_quad_deg,
+            mean=mean, 
+            var=var
+        )
+        return proba
