@@ -191,11 +191,11 @@ class GPBinaryClassifier(Abstract_GP):
         super().__init__(kernel_function, epsilon)
         self._sigmoid = sigmoid_function
 
-        self._map = None
-        self._gmap = None
+        self._mode = None
+        self._grad_mode_loglik = None
         self._sqrt_W = None
 
-    def fit(self, X, y, laplace_approx_n_iter=500):
+    def fit(self, X, y, laplace_approx_n_iter=10, verbose=False):
         self._n = len(X)
         self._X = X.copy()
         self._y = y.copy()
@@ -207,50 +207,51 @@ class GPBinaryClassifier(Abstract_GP):
                 K[i,j] = self._kernel.evaluate(self._X[i,:], self._X[j,:])
                 K[j,i] = K[i,j]
 
-        # Laplace approximation using Newton approximation
-        f = np.zeros(self._n)
+        # Laplace approximation using Newton algorithm
+        f = 0. + np.zeros(self._n)
         W = np.zeros((self._n, self._n))
         sqrt_W = np.zeros((self._n, self._n))
         grad_loglik = np.zeros(self._n)
         for it in range(laplace_approx_n_iter):
-            # Compute W and its square root (supposing it is a positive diagonal matrix), and the gradient of the loglik p(y|f)
+            objective = 0
+            # Compute the grad log likelihood and W
             for i in range(self._n):
                 z = self._y[i]*f[i]
-                s, log_s_prime, log_s_second = self._sigmoid.evaluate(z, return_log_derivatives=True)
-                W[i,i] =  -log_s_second
+                s, lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
+                grad_loglik[i] = self._y[i]*lsp
+                W[i,i] = -lspp
                 sqrt_W[i,i] = sqrt(W[i,i])
-                grad_loglik[i] = self._y[i]*log_s_prime
-
-            L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
+                objective += log(s)
+            # Compute the new f
+            L = cholesky(identity(self._n)+sqrt_W @ K @ sqrt_W)
             b = W @ f + grad_loglik
-            a = b - sqrt_W @ solve( L.T, solve(L, sqrt_W @ K @ b) )
-            
+            a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
             f = K @ a
-        
-        # derive the MAP
-        self._map = f
-        # Compute the marginal loglik and the other variables
-        self._loglik = 0
-        self._gmap = np.zeros(self._n)
+            objective += -np.dot(a,f)/2
+            if verbose:
+                print(f'objective={objective}')
+         
+        # Compute the log-marginal-likelihood
+        s_list = np.zeros(self._n)
         for i in range(self._n):
-            z = self._y[i]*f[i]
-            s, log_s_prime, log_s_second = self._sigmoid.evaluate(z, return_log_derivatives=True)
-    
-            self._loglik += log(s)
-            self._gmap[i] = self._y[i]*log_s_prime
-            W[i,i] = -log_s_second
+                z = self._y[i]*f[i]
+                s_list[i], lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
+                grad_loglik[i] = self._y[i]*lsp
+                W[i,i] = -lspp
+                sqrt_W[i,i] = sqrt(W[i,i])
+        L = cholesky(identity(self._n)+sqrt_W @ K @ sqrt_W)
+        b = W @ f + grad_loglik
+        a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
 
-        self._sqrt_W = sqrt(W)
-
-        self._chol = cholesky( identity(self._n) + self._sqrt_W @ K @ self._sqrt_W )
+        self._loglik = -np.dot(a, f)/2
         for i in range(self._n):
-            self._loglik -= log(self._chol[i,i])
-        b = W @ f + self._gmap
-        a = b - self._sqrt_W @ solve( self._chol.T, solve(self._chol, self._sqrt_W @ K @ b) )
-        self._loglik -= np.dot(self._map, a)/2
+            self._loglik += log(s_list[i]) - log(L[i,i])
 
+        # Other attributions
+        self._mode = f
         return self
     
+    """
     def predict(self, x, hermite_quad_deg=10):
         k = np.zeros(self._n)
         for i in range(self._n):
@@ -272,7 +273,6 @@ class GPBinaryClassifier(Abstract_GP):
 
         return proba
 
-    """
     def sample(self, X, size=1, return_mean_cov=False):
         p = len(X)
         k = np.zeros((self._n, p))

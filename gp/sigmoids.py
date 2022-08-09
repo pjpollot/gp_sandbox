@@ -15,5 +15,5 @@ class Logistic:
             log_s_prime = 1-s
             log_s_second = -s*(1-s)
             return s, log_s_prime, log_s_second
-        else:
-            return s
+        
+        return s
