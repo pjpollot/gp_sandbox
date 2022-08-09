@@ -1,7 +1,7 @@
 # gp_sandbox 
 Sandbox project towards Gaussian Processes
 
-## Recent updates
+## Features in WIP 
 
 ### GP Binary Classifier
 
