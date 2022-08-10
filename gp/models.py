@@ -10,10 +10,9 @@ from .approximations import hermite_quadrature
 
 # Abstract GP class
 class Abstract_GP:
-    def __init__(self, kernel_function, epsilon):
+    def __init__(self, kernel_function, epsilon, additional_parameters:dict=None):
         self._d = kernel_function._d
         self._kernel = kernel_function
-        self._param = kernel_function._param
         self._eps = epsilon
 
         self._n = 0
@@ -21,6 +20,20 @@ class Abstract_GP:
         self._y = None
         self._loglik = None
         self._chol = None
+
+        self._param = kernel_function._param
+        # Plus the additional parameters
+        if additional_parameters:
+            for key, value in additional_parameters.items():
+                self._param[key] = value
+        
+        self._grad = dict()
+        for key in additional_parameters:
+            self._grad[key] = None
+
+    @abstractmethod
+    def set_param(self, param, verbose):
+        pass
 
     @abstractmethod
     def fit(self, X, y):
@@ -40,13 +53,7 @@ class GPRegressor(Abstract_GP):
     epsilon: correction hyperparameter to avoid singular covariance matrix
     """
     def __init__(self, kernel_function, noise=1e-10, epsilon=1e-10):
-        super().__init__(kernel_function, epsilon)
-        self._param["log_noise"] = log(noise)
-
-        self._grad = dict()
-        for key in self._param:
-            self._grad[key] = None        
-
+        super().__init__(kernel_function, epsilon, additional_parameters={'log_noise':log(noise)})
         self._alpha = None
 
     def set_param(self, param, verbose=True):
@@ -60,13 +67,6 @@ class GPRegressor(Abstract_GP):
         self._grad = dict()
         for key in self._param:
             self._grad[key] = None  
-
-        self._n = 0
-        self._X = None
-        self._y = None
-
-        self._alpha = None
-        self._loglik = None
 
         if verbose:
             print("GP's parameters successfully changed! the Regressor needs to be trained again.")
