@@ -10,7 +10,7 @@ from .approximations import hermite_quadrature
 
 # Abstract GP class
 class Abstract_GP:
-    def __init__(self, kernel_function, epsilon, additional_parameters:dict=None):
+    def __init__(self, kernel_function, epsilon, additional_parameters={}):
         self._d = kernel_function._d
         self._kernel = kernel_function
         self._eps = epsilon
@@ -23,9 +23,8 @@ class Abstract_GP:
 
         self._param = kernel_function._param
         # Plus the additional parameters
-        if additional_parameters:
-            for key, value in additional_parameters.items():
-                self._param[key] = value
+        for key, value in additional_parameters.items():
+            self._param[key] = value
         
         self._grad = dict()
         for key in additional_parameters:
@@ -205,6 +204,18 @@ class GPBinaryClassifier(Abstract_GP):
         self._mode = None
         self._grad_mode_loglik = None
         self._sqrt_W = None
+    
+    def set_param(self, param, verbose=True):
+        for key in self._kernel._param:
+            if key in param:
+                self._kernel._param[key] = param[key]
+                self._param[key] = param[key]
+            
+            if verbose:
+                print("GP's parameters successfully changed! the Regressor needs to be trained again.")
+
+            return self._param
+        
 
     def fit(self, X, y, laplace_approx_n_iter=10, verbose=False):
         self._n = len(X)
@@ -219,7 +230,7 @@ class GPBinaryClassifier(Abstract_GP):
                 K[j,i] = K[i,j]
 
         # Laplace approximation using Newton algorithm
-        f = 0. + np.zeros(self._n)
+        f = np.zeros(self._n)
         W = np.zeros((self._n, self._n))
         sqrt_W = np.zeros((self._n, self._n))
         grad_loglik = np.zeros(self._n)
@@ -228,7 +239,7 @@ class GPBinaryClassifier(Abstract_GP):
             # Compute the grad log likelihood and W
             for i in range(self._n):
                 z = self._y[i]*f[i]
-                s, lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
+                s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
                 grad_loglik[i] = self._y[i]*lsp
                 W[i,i] = -lspp
                 sqrt_W[i,i] = sqrt(W[i,i])
@@ -246,7 +257,7 @@ class GPBinaryClassifier(Abstract_GP):
         self._loglik = 0
         for i in range(self._n):
             z = self._y[i]*f[i]
-            s, lsp, lspp = self._sigmoid.evaluate(z, return_log_derivatives=True)
+            s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
             grad_loglik[i] = self._y[i]*lsp
             W[i,i] = -lspp
             sqrt_W[i,i] = sqrt(W[i,i])
