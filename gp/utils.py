@@ -1,3 +1,4 @@
+import numpy as np
 from numpy.polynomial.hermite import hermgauss
 from numpy import pi, sqrt
 
@@ -11,3 +12,6 @@ def hermite_quadrature(func, deg: int, mean=0., var=1.):
     for i in range(deg):
         I += INV_SQRT_PI*w[i]*func(mean+c*u[i])
     return I
+
+def extract_diagonal_matrix(A):
+    return np.diag(np.diag(A))

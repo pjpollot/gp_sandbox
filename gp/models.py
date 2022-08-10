@@ -1,12 +1,14 @@
 from abc import abstractmethod
-from re import M
 import numpy as np
 from numpy import pi, exp, log, sqrt, identity
 from numpy.linalg import solve, cholesky, inv
 from scipy import rand
 from scipy.stats import multivariate_normal
 
-from .approximations import hermite_quadrature
+from .kernels import Kernel
+from .sigmoids import Sigmoid
+
+from .utils import extract_diagonal_matrix, hermite_quadrature
 
 # Abstract GP class
 class Abstract_GP:
@@ -51,7 +53,7 @@ class GPRegressor(Abstract_GP):
     noise: the noise parameter (sigma_n) in the regression
     epsilon: correction hyperparameter to avoid singular covariance matrix
     """
-    def __init__(self, kernel_function, noise=1e-10, epsilon=1e-10):
+    def __init__(self, kernel_function:Kernel, noise=1e-10, epsilon=1e-10):
         super().__init__(kernel_function, epsilon, additional_parameters={'log_noise':log(noise)})
         self._alpha = None
 
@@ -197,7 +199,7 @@ class GPBinaryClassifier(Abstract_GP):
     hermite_normalizer = 1/sqrt(pi)
     sqrt_2 = sqrt(2)
 
-    def __init__(self, kernel_function, sigmoid_function, epsilon=1e-10):
+    def __init__(self, kernel_function:Kernel, sigmoid_function:Sigmoid, epsilon=1e-10):
         super().__init__(kernel_function, epsilon)
         self._sigmoid = sigmoid_function
 
@@ -222,12 +224,18 @@ class GPBinaryClassifier(Abstract_GP):
         self._X = X.copy()
         self._y = y.copy()
 
-        # compute the covariance matrix
+        # compute the covariance matrix and its gradient
         K = np.zeros((self._n, self._n))
+        grad_K = dict()
+        for key in self._param:
+            grad_K[key] = np.zeros((self._n, self._n))
         for i in range(self._n):
             for j in range(self._n):
-                K[i,j] = self._kernel.evaluate(self._X[i,:], self._X[j,:])
+                K[i,j], g = self._kernel.evaluate(self._X[i,:], self._X[j,:], return_grad=True)
                 K[j,i] = K[i,j]
+                for key, value in g.items():
+                    grad_K[key][i,j] = value
+                    grad_K[key][j,i] = value
 
         # Laplace approximation using Newton algorithm
         f = np.zeros(self._n)
@@ -253,13 +261,16 @@ class GPBinaryClassifier(Abstract_GP):
             if verbose:
                 print(f'objective={objective}')
          
-        # END LOOP: compute the log-marginal-likelihood
+        # END LOOP
+        ## compute the log-marginal-likelihood
         self._loglik = 0
+        third_derivatives_loglik = np.zeros(self._n)
         for i in range(self._n):
             z = self._y[i]*f[i]
             s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
             grad_loglik[i] = self._y[i]*lsp
             W[i,i] = -lspp
+            third_derivatives_loglik[i] = self._y[i]*lsppp
             sqrt_W[i,i] = sqrt(W[i,i])
             self._loglik += log(s)
         L = cholesky(identity(self._n)+sqrt_W @ K @ sqrt_W)
@@ -268,8 +279,16 @@ class GPBinaryClassifier(Abstract_GP):
         self._loglik -= np.dot(a,f)/2
         for i in range(self._n):
             self._loglik -= log(L[i,i])
-
-        # As for the other attributes
+        # compute the gradient of the log-marginal
+        R = sqrt_W @ solve(L.T, solve(L, sqrt_W))
+        C = solve(L, sqrt_W @ K)
+        s2 = -0.5*extract_diagonal_matrix(extract_diagonal_matrix(K) - extract_diagonal_matrix(C.T @ C)) @ third_derivatives_loglik 
+        for key, G in grad_K.items():
+            s1 = np.dot(a, G @ a)/2 - np.trace(R @ G)/2
+            u = G @ grad_loglik
+            s3 = u - K @ R @ u
+            self._grad[key] = s1 + np.dot(s2, s3)
+        ## as for the other attributes
         self._mode = f
         self._chol = L
         self._sqrt_W = sqrt_W

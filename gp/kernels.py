@@ -6,7 +6,7 @@ Kernels' abstract class
 common methods:
 -> evaluate: return the evaluation of the kernel, and if wanted, its gradient
 """
-class Abstract_kernel:
+class Kernel:
     def __init__(self, input_dim, parameters):
         self._d = input_dim
         self._param = parameters
@@ -16,7 +16,7 @@ class Abstract_kernel:
             pass
 
 # A case in point, the Radial Basis Function
-class RBF(Abstract_kernel):
+class RBF(Kernel):
     def __init__(self, input_dim, l=1., sigma=1.):
         parameters = {
             "log_l": log(l),
