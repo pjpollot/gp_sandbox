@@ -41,6 +41,10 @@ class Abstract_GP:
         pass
 
     @abstractmethod
+    def fit_optimize(self, X, y):
+        pass
+
+    @abstractmethod
     def predict(self, X):
         pass
 
@@ -208,18 +212,17 @@ class GPBinaryClassifier(Abstract_GP):
         self._sqrt_W = None
     
     def set_param(self, param, verbose=True):
-        for key in self._kernel._param:
-            if key in param:
-                self._kernel._param[key] = param[key]
-                self._param[key] = param[key]
-            
+        for key, value in param.items():
+            if key in self._kernel._param:
+                self._kernel._param[key] = value
+                self._param[key] = value
             if verbose:
                 print("GP's parameters successfully changed! the Regressor needs to be trained again.")
 
             return self._param
         
 
-    def fit(self, X, y, laplace_approx_n_iter=10, verbose=False):
+    def fit(self, X, y, laplace_approx_n_iter=10):
         self._n = len(X)
         self._X = X.copy()
         self._y = y.copy()
@@ -258,8 +261,6 @@ class GPBinaryClassifier(Abstract_GP):
             a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
             f = K @ a
             objective -= np.dot(a,f)/2
-            if verbose:
-                print(f'objective={objective}')
          
         # END LOOP
         ## compute the log-marginal-likelihood
@@ -295,8 +296,26 @@ class GPBinaryClassifier(Abstract_GP):
         self._grad_mode_loglik = grad_loglik
         return self
     
-    def fit_optimize(self, X, y, laplace_approx_n_iter=10, verbose=False):
-        pass
+    def fit_optimize(self, X, y, lr=1e-2, n_iter=100, laplace_approx_n_iter=10, verbose=True):
+        if verbose:
+            print("# Starting optimization")
+
+        for it in range(n_iter):
+            self.fit(X, y, laplace_approx_n_iter)
+
+            if verbose:
+                print(
+                    "#{}: log_lik={}; parameters={}".format(
+                        it+1, self._loglik, self._param
+                    )
+                )
+            updated_param = dict()
+            for key in self._param:
+                updated_param[key] = self._param[key] + lr * self._grad[key]
+
+            self.set_param(updated_param, verbose=False)
+        
+        return self.fit(X, y, laplace_approx_n_iter)
     
     def predict(self, x, return_var=False, hermite_quad_deg=50):
         k = np.zeros(self._n)

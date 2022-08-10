@@ -13,8 +13,8 @@ class Logistic(Sigmoid):
 
         if return_log_derivatives:
             log_s_prime = 1-s
-            log_s_second = -s*(1-s)
-            log_s_third = s*(1-s)*(2*s-1)
+            log_s_second = -log_s_prime * s # or equivalently s*(s-1)
+            log_s_third = log_s_second * (1-2*s)  # or equivalently s*(s-1)*(1-2*s)
             return s, log_s_prime, log_s_second, log_s_third
         
         return s
