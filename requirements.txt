@@ -1,4 +1,5 @@
 absl-py==1.2.0
+appnope==0.1.3
 argon2-cffi==21.3.0
 argon2-cffi-bindings==21.2.0
 attrs==22.1.0
@@ -16,6 +17,7 @@ fastjsonschema==2.16.1
 fonttools==4.34.4
 importlib-metadata==4.12.0
 importlib-resources==5.9.0
+iniconfig==1.1.1
 ipykernel==6.15.1
 ipython==7.34.0
 ipython-genutils==0.2.0
@@ -51,14 +53,17 @@ pexpect==4.8.0
 pickleshare==0.7.5
 Pillow==9.2.0
 pkgutil_resolve_name==1.3.10
+pluggy==1.0.0
 prometheus-client==0.14.1
 prompt-toolkit==3.0.30
 psutil==5.9.1
 ptyprocess==0.7.0
+py==1.11.0
 pycparser==2.21
 Pygments==2.12.0
 pyparsing==3.0.9
 pyrsistent==0.18.1
+pytest==7.1.2
 python-dateutil==2.8.2
 pyzmq==23.2.0
 qtconsole==5.3.1
@@ -67,11 +72,11 @@ scikit-learn==1.0.2
 scipy==1.7.3
 Send2Trash==1.8.0
 six==1.16.0
-sklearn==0.0
 soupsieve==2.3.2.post1
 terminado==0.15.0
 threadpoolctl==3.1.0
 tinycss2==1.1.1
+tomli==2.0.1
 tornado==6.2
 traitlets==5.3.0
 typing_extensions==4.3.0

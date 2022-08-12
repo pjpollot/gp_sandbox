@@ -1,7 +1,7 @@
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 from numpy import exp
 
-class Sigmoid:
+class Sigmoid(metaclass=ABCMeta):
     @abstractmethod
     def evaluate(self, z, return_log_derivatives):
         pass
