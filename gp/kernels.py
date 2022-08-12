@@ -3,9 +3,7 @@ from math import exp, log
 import numpy as np
 
 """
-Kernels' abstract class
-common methods:
--> evaluate: return the evaluation of the kernel, and if wanted, its gradient
+Kernel abstract class
 """
 class Kernel(metaclass=ABCMeta):
     def __init__(self, input_dim, parameters):
@@ -61,10 +59,10 @@ class Kernel(metaclass=ABCMeta):
         return K
             
 
-                
-            
 
-# A case in point, the Radial Basis Function
+"""
+A case in point, the Radial Basis Function
+"""
 class RBF(Kernel):
     def __init__(self, input_dim, l=1., sigma=1.):
         parameters = {
