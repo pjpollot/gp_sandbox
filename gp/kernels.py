@@ -14,6 +14,14 @@ class Kernel(metaclass=ABCMeta):
     def evaluate(self, x, y, return_grad):
         pass
     
+    def set_param(self, param):
+        for key, value in param.items():
+            if key in self._param:
+                self._param[key] = value
+
+    def get_param(self):
+        return self._param
+
     def evaluate_matrix(self, X1, X2=None, return_grad=False):
         n = len(X1)
         if X2 is not None:

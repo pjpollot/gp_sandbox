@@ -12,24 +12,14 @@ from .utils import extract_diagonal_matrix, hermite_quadrature
 # Abstract GP class
 class GP(metaclass=ABCMeta):
     def __init__(self, kernel_function: Kernel, minimizer: GradientBasedMinimizer):
-        self._d = kernel_function._d
         self._kernel = kernel_function
         self._minimizer = minimizer
-        
+        # the training set information
         self._n = 0
         self._X = None
         self._y = None
-
-        self._sqrt_W = None
+        # additional useful information
         self._L = None
-
-    def set_param(self, param):
-        for key, value in param.items():
-            if key in self._kernel._param:
-                self._kernel._param[key] = value
-
-    def get_param(self):
-        return self._kernel._param
 
     @abstractmethod
     def fit(self, X, y):
@@ -51,15 +41,15 @@ class GPBinaryClassifier(GP):
     def __init__(self, kernel_function: Kernel, sigmoid_function: Sigmoid, minimizer: GradientBasedMinimizer):
         super().__init__(kernel_function, minimizer)
         self._sigmoid = sigmoid_function
+        self._sqrt_W = None
 
     def fit(self, X, y, laplace_n_iter=10, optim_n_iter=100):
         super().fit(X, y)
-
         # define the objective function and its gradient
         def negative_loglik(param):
             logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter)
             return -logZ, -gradLogZ
-        
+        # then minimize it
         self._minimizer.set_objective_and_gradient(negative_loglik).minimize(
             x0=self._kernel._param, 
             n_iter=optim_n_iter
@@ -67,9 +57,11 @@ class GPBinaryClassifier(GP):
         return self
     
     def log_marginal_likelihood(self, param, laplace_n_iter=10):
-        self.set_param(param)
+        # change the parameters of the GP
+        self._kernel.set_param(param)
+        # compute the mode, the covariance and the gradient of the covariance
         f, K, grad_K = self.__compute_mode_cov_gradcov(laplace_n_iter)
-        
+        # start calculatations of the log marginal and its gradient
         W = np.zeros((self._n, self._n))
         self._sqrt_W = np.zeros((self._n, self._n))
         self._L = np.zeros((self._n, self._n))
@@ -91,7 +83,6 @@ class GPBinaryClassifier(GP):
         a = b - self._sqrt_W @ solve(self._L.T, solve(self._L, self._sqrt_W @ K @ b))
         # then derive first the marginal log-likelihood
         logZ = -np.dot(a, f)/2 + loglik - log(self._L.diagonal()).sum()
-        
         # as for the gradient of the marginal
         grad_logZ = dict()
         R = self._sqrt_W @ solve(self._L.T, solve(self._L, self._sqrt_W))
@@ -102,22 +93,21 @@ class GPBinaryClassifier(GP):
             q = dK @ grad_loglik
             s3 = q - K @ R @ q
             grad_logZ[parameter] = s1 + np.dot(s2, s3)
-        
         return logZ, grad_logZ
     
     def __compute_mode_cov_gradcov(self, laplace_n_iter):
         f = np.zeros(self._n)
-
+        # we first calculate the covariance matrix and its gradient
         K, grad_K = self._kernel.evaluate_matrix(self._X, return_grad=True)
-
+        # then we start the estimation of the mode using the Newton algorithm
         W = np.zeros((self._n, self._n))
         sqrt_W = np.zeros((self._n, self._n))
         L = np.zeros((self._n, self._n))
         grad_loglik = np.zeros(self._n)
-        # start the Newton algorithm
+        ## start loop
         for it in range(laplace_n_iter):
             loglik = 0
-            # compute W, its sqrt, the log-likelihood and its gradient
+            ## compute W, its sqrt, the log-likelihood and its gradient
             for i in range(self._n):
                 z = self._y[i]*f[i]
                 s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
@@ -125,12 +115,11 @@ class GPBinaryClassifier(GP):
                 grad_loglik[i] = self._y[i] * lsp
                 W[i,i] = -lspp
                 sqrt_W[i,i] = sqrt(W[i,i])
-            # compute L, b and a
+            ## compute L, b and a
             L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
             b = W @ f + grad_loglik
             a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
-            # then compute the next f
+            ## then compute the next f
             f = K @ a
-        # end loop
+        # end loop: return the variables of interest
         return f, K, grad_K
-
