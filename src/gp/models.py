@@ -4,14 +4,14 @@ from numpy import identity
 from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
 
-from .optimization import GradientBasedMinimizer
+from .optimization import GradientBasedOptimizer
 from .sigmoids import Sigmoid
 from .kernels import Kernel
 from .utils import extract_diagonal_matrix, hermite_quadrature
 
 # Abstract GP class
 class GP(metaclass=ABCMeta):
-    def __init__(self, kernel_function: Kernel, minimizer: GradientBasedMinimizer):
+    def __init__(self, kernel_function: Kernel, minimizer: GradientBasedOptimizer):
         self._kernel = kernel_function
         self._minimizer = minimizer
         # the training set information
@@ -38,7 +38,7 @@ class GP(metaclass=ABCMeta):
 
 # GP Binary Classifier
 class GPBinaryClassifier(GP):
-    def __init__(self, kernel_function: Kernel, sigmoid_function: Sigmoid, minimizer: GradientBasedMinimizer):
+    def __init__(self, kernel_function: Kernel, sigmoid_function: Sigmoid, minimizer: GradientBasedOptimizer):
         super().__init__(kernel_function, minimizer)
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
@@ -48,7 +48,10 @@ class GPBinaryClassifier(GP):
         # define the objective function and its gradient
         def negative_loglik(param):
             logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter)
-            return -logZ, -gradLogZ
+            m_gradLogZ = dict()
+            for key, value in gradLogZ.items():
+                m_gradLogZ[key] = -value
+            return -logZ, m_gradLogZ
         # then minimize it
         self._minimizer.set_objective_and_gradient(negative_loglik).minimize(
             x0=self._kernel._param, 
@@ -56,9 +59,13 @@ class GPBinaryClassifier(GP):
         )
         return self
     
-    def log_marginal_likelihood(self, param, laplace_n_iter=10):
-        # change the parameters of the GP
-        self._kernel.set_param(param)
+    def predict(self, X):
+        pass
+    
+    def log_marginal_likelihood(self, param=None, laplace_n_iter=10):
+        if param is not None:
+            # change the parameters of the GP
+            self._kernel.set_param(param)
         # compute the mode, the covariance and the gradient of the covariance
         f, K, grad_K = self.__compute_mode_cov_gradcov(laplace_n_iter)
         # start calculatations of the log marginal and its gradient

@@ -3,7 +3,7 @@ import numpy as np
 
 # ---------- ABSTRACT CLASSES ---------------
 
-class Minimizer(metaclass=ABCMeta):
+class Optimizer(metaclass=ABCMeta):
     def __init__(self):
         self._x_min = None
         self._f_min = None
@@ -18,7 +18,7 @@ class Minimizer(metaclass=ABCMeta):
     def minimize(self, x0: dict, n_iter, verbose: bool):
         pass
 
-class GradientBasedMinimizer(Minimizer):
+class GradientBasedOptimizer(Optimizer):
     def __init__(self, obj_func_and_grad=None):
         super().__init__()
         self._obj_and_grad =obj_func_and_grad
@@ -30,8 +30,8 @@ class GradientBasedMinimizer(Minimizer):
 
 # ----------------------------------------------
 
-class GradientDescentMinimizer(GradientBasedMinimizer):
-    def __init__(self, obj_func_and_grad, learning_rate=.1):
+class GradientDescentOptimizer(GradientBasedOptimizer):
+    def __init__(self, obj_func_and_grad=None, learning_rate=.1):
         super().__init__(obj_func_and_grad)
         self._lr = learning_rate 
     
