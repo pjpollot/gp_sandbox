@@ -22,14 +22,14 @@ class GP(metaclass=ABCMeta):
         self._L = None
 
     @abstractmethod
-    def fit(self, X, y):
+    def fit(self, X, y, verbose=True):
         self._n = len(y)
         self._X = X.copy()
         self._y = y.copy()
         return self
     
     @abstractmethod
-    def log_marginal_likelihood(self, param):
+    def log_marginal_likelihood(self, param, verbose=True):
         pass
 
     @abstractmethod
@@ -43,11 +43,11 @@ class GPBinaryClassifier(GP):
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
 
-    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=100):
+    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=100, verbose=True):
         super().fit(X, y)
         # define the objective function and its gradient
         def negative_loglik(param):
-            logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter)
+            logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, verbose)
             m_gradLogZ = dict()
             for key, value in gradLogZ.items():
                 m_gradLogZ[key] = -value
@@ -62,7 +62,7 @@ class GPBinaryClassifier(GP):
     def predict(self, X):
         pass
     
-    def log_marginal_likelihood(self, param=None, laplace_n_iter=10):
+    def log_marginal_likelihood(self, param=None, laplace_n_iter=10, verbose=True):
         if param is not None:
             # change the parameters of the GP
             self._kernel.set_param(param)
@@ -100,6 +100,9 @@ class GPBinaryClassifier(GP):
             q = dK @ grad_loglik
             s3 = q - K @ R @ q
             grad_logZ[parameter] = s1 + np.dot(s2, s3)
+        
+        if verbose:
+            print("log-likelihood=%.5f" % (logZ))
         return logZ, grad_logZ
     
     def __compute_mode_cov_gradcov(self, laplace_n_iter):
