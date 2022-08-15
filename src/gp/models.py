@@ -4,8 +4,8 @@ from numpy import identity
 from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
 
-from .optimization import GradientBasedOptimizer
-from .sigmoids import Sigmoid
+from .optimization import GradientBasedOptimizer, GradientDescentOptimizer
+from .sigmoids import Logistic, Sigmoid
 from .kernels import Kernel
 from .utils import extract_diagonal_matrix, hermite_quadrature
 
@@ -38,7 +38,7 @@ class GP(metaclass=ABCMeta):
 
 # GP Binary Classifier
 class GPBinaryClassifier(GP):
-    def __init__(self, kernel_function: Kernel, sigmoid_function: Sigmoid, minimizer: GradientBasedOptimizer):
+    def __init__(self, kernel_function: Kernel, sigmoid_function=Logistic(), minimizer=GradientDescentOptimizer()):
         super().__init__(kernel_function, minimizer)
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
