@@ -20,6 +20,9 @@ class GP(metaclass=ABCMeta):
         self._y = None
         # additional useful information
         self._L = None
+    
+    def get_param(self):
+        return self._kernel.get_param()
 
     @abstractmethod
     def fit(self, X, y, verbose=True):
@@ -43,7 +46,7 @@ class GPBinaryClassifier(GP):
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
 
-    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=100, verbose=True):
+    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=50, verbose=True):
         super().fit(X, y)
         # define the objective function and its gradient
         def negative_loglik(param):
