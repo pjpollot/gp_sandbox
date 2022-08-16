@@ -79,7 +79,7 @@ class GPBinaryClassifier(GP):
         for i in range(self._n):
             z = self._y[i]*f[i]
             s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
-            loglik += s
+            loglik += log(s)
             grad_loglik[i] = self._y[i] * lsp
             W[i,i] = -lspp
             self._sqrt_W[i,i] = sqrt(W[i,i])
@@ -121,7 +121,7 @@ class GPBinaryClassifier(GP):
             for i in range(self._n):
                 z = self._y[i]*f[i]
                 s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
-                loglik += s
+                loglik += log(s)
                 grad_loglik[i] = self._y[i] * lsp
                 W[i,i] = -lspp
                 sqrt_W[i,i] = sqrt(W[i,i])
