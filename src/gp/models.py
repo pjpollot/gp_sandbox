@@ -3,6 +3,7 @@ import numpy as np
 from numpy import identity
 from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
+from scipy.stats import multivariate_normal
 
 from .optimization import GradientBasedOptimizer, GradientDescentOptimizer
 from .sigmoids import Logistic, Sigmoid
@@ -39,6 +40,10 @@ class GP(metaclass=ABCMeta):
     def predict(self, X):
         pass
 
+    @abstractmethod
+    def sample(self, X, size=1):
+        pass
+
 # GP Binary Classifier
 class GPBinaryClassifier(GP):
     def __init__(self, kernel_function=RBF(), sigmoid_function=Logistic(), minimizer=GradientDescentOptimizer()):
@@ -67,7 +72,7 @@ class GPBinaryClassifier(GP):
             )
             return self
     
-    def predict(self, X, return_var=False, hermite_quad_deg=10):
+    def predict(self, X, return_mean_var=False, hermite_quad_deg=10):
         p = len(X)
         k = self._kernel(self._X, X)
         mean = k.T @ self._grad_loglik
@@ -76,8 +81,18 @@ class GPBinaryClassifier(GP):
         proba = np.zeros(p)
         for i in range(p):
             proba[i] = hermite_quadrature(self._sigmoid, deg=hermite_quad_deg, mean=mean[i], var=var[i,i])
-        if return_var:
-            return proba, var
+        if return_mean_var:
+            return proba, mean, var
+        return proba
+
+    def sample(self, X, size=1, return_f=False, epsilon=1e-4):
+        _, mean, var = self.predict(X, return_mean_var=True)
+        sigma = var + epsilon*identity(len(X))
+        f_samples = multivariate_normal(mean=mean, cov=sigma).rvs(size=size)
+
+        proba = self._sigmoid(f_samples)
+        if return_f:
+            return proba, f_samples
         return proba
     
     def log_marginal_likelihood(self, param=None, laplace_n_iter=10, return_grad=False):
