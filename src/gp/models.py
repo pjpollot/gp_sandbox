@@ -45,6 +45,7 @@ class GPBinaryClassifier(GP):
         super().__init__(kernel_function, minimizer)
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
+        self._grad_loglik = None
 
     def fit(self, X, y, laplace_n_iter=10, optim_n_iter=50, verbose=True):
         super().fit(X, y)
@@ -62,8 +63,18 @@ class GPBinaryClassifier(GP):
         )
         return self
     
-    def predict(self, X):
-        pass
+    def predict(self, X, return_var=False, hermite_quad_deg=10):
+        p = len(X)
+        k = self._kernel.evaluate_matrix(self._X, X)
+        mean = k.T @ self._grad_loglik
+        v = solve(self._L, self._sqrt_W @ k)
+        var = self._kernel.evaluate_matrix(X) - v.T @ v
+        proba = np.zeros(p)
+        for i in range(p):
+            proba[i] = hermite_quadrature(self._sigmoid.evaluate, deg=hermite_quad_deg, mean=mean[i], var=var[i,i])
+        if return_var:
+            return proba, var
+        return proba
     
     def log_marginal_likelihood(self, param=None, laplace_n_iter=10, verbose=True):
         if param is not None:
@@ -75,7 +86,7 @@ class GPBinaryClassifier(GP):
         W = np.zeros((self._n, self._n))
         self._sqrt_W = np.zeros((self._n, self._n))
         self._L = np.zeros((self._n, self._n))
-        grad_loglik = np.zeros(self._n)
+        self._grad_loglik = np.zeros(self._n)
         grad3_loglik = np.zeros(self._n)
         loglik = 0
         ## compute W, its sqrt, the log-likelihood and its gradient and third derivatives
@@ -83,13 +94,13 @@ class GPBinaryClassifier(GP):
             z = self._y[i]*f[i]
             s, lsp, lspp, lsppp = self._sigmoid.evaluate(z, return_log_derivatives=True)
             loglik += log(s)
-            grad_loglik[i] = self._y[i] * lsp
+            self._grad_loglik[i] = self._y[i] * lsp
             W[i,i] = -lspp
             self._sqrt_W[i,i] = sqrt(W[i,i])
             grad3_loglik[i] = self._y[i] * lsppp
         # compute L, b and a
         self._L = cholesky( identity(self._n) + self._sqrt_W @ K @ self._sqrt_W )
-        b = W @ f + grad_loglik
+        b = W @ f + self._grad_loglik
         a = b - self._sqrt_W @ solve(self._L.T, solve(self._L, self._sqrt_W @ K @ b))
         # then derive first the marginal log-likelihood
         logZ = -np.dot(a, f)/2 + loglik - log(self._L.diagonal()).sum()
@@ -100,10 +111,9 @@ class GPBinaryClassifier(GP):
         s2 = extract_diagonal_matrix(extract_diagonal_matrix(K) - extract_diagonal_matrix(C.T @ C)) @ grad3_loglik
         for parameter, dK in grad_K.items():
             s1 = (np.dot(a, dK @ a) - np.trace(R @ dK))/2
-            q = dK @ grad_loglik
+            q = dK @ self._grad_loglik
             s3 = q - K @ R @ q
             grad_logZ[parameter] = s1 + np.dot(s2, s3)
-        
         if verbose:
             print("log-likelihood=%.5f" % (logZ))
         return logZ, grad_logZ
