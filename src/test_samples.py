@@ -31,8 +31,9 @@ def test_RBF_kernel():
     X = np.random.uniform(size=(n,2))
     Y = np.random.uniform(size=(p,2))
 
-    ker1 = RBF(l=1., sigma=1.)
-    ker2 = skgp.kernels.ConstantKernel(constant_value=1.) * skgp.kernels.RBF(length_scale=1.)
+    corr_length, sigma  = np.exp(np.random.normal(size=2))
+    ker1 = RBF(l=corr_length, sigma=sigma)
+    ker2 = skgp.kernels.ConstantKernel(constant_value=sigma**2) * skgp.kernels.RBF(length_scale=corr_length)
 
     # Variance test
     K1 = ker1(X)
@@ -70,17 +71,28 @@ def test_marginal_loglik():
     X, y = generate_dataset()
     eps = 1e-2
 
-    gpc1 = GPBinaryClassifier(minimizer=None).fit(X, y)
+    corr_length, sigma  = np.exp(np.random.normal(size=2))
+
+    rbf1 = RBF(l=corr_length, sigma=1)
+    gpc1 = GPBinaryClassifier(kernel_function=rbf1, minimizer=None).fit(X, y)
+
+    rbf2 = skgp.kernels.ConstantKernel(constant_value=sigma**2) * skgp.kernels.RBF(length_scale=corr_length)
     gpc2 = skgp.GaussianProcessClassifier(optimizer=None).fit(X, y)
 
     assert abs(gpc1.log_marginal_likelihood() - gpc2.log_marginal_likelihood()) < eps
 
-def test_fit():
-    X, y = generate_dataset()
-    eps = 1e-2
+def test_performance():
+    X_train, X_test, y_train, y_test = generate_dataset(including_testing_set=True)
+    threshold = 1e-1
 
-    gpc1 = GPBinaryClassifier().fit(X, y, verbose=True)
-    gpc2 = skgp.GaussianProcessClassifier().fit(X, y)
-
-    assert gpc1.log_marginal_likelihood() + eps >= gpc2.log_marginal_likelihood()
-
+    gpc = GPBinaryClassifier().fit(X_train, y_train)
+    proba = gpc.predict(X_test)
+    y_pred = 2*(proba>.5)-1
+    
+    n_error = 0
+    n_test = len(y_test)
+    for i in range(n_test):
+        if y_test[i] != y_pred[i]:
+            n_error += 1
+    error_rate = (1.*n_error)/n_test
+    assert error_rate <= threshold

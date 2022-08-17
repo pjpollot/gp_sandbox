@@ -25,14 +25,14 @@ class GP(metaclass=ABCMeta):
         return self._kernel.get_param()
 
     @abstractmethod
-    def fit(self, X, y, verbose=True):
+    def fit(self, X, y):
         self._n = len(y)
         self._X = X.copy()
         self._y = y.copy()
         return self
     
     @abstractmethod
-    def log_marginal_likelihood(self, param, return_grad=False, verbose=False):
+    def log_marginal_likelihood(self, param, return_grad=False):
         pass
 
     @abstractmethod
@@ -47,7 +47,7 @@ class GPBinaryClassifier(GP):
         self._sqrt_W = None
         self._grad_loglik = None
 
-    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=50, verbose=False):
+    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=50):
         super().fit(X, y)
         # define the objective function and its gradient
         if self._minimizer is None:
@@ -55,7 +55,7 @@ class GPBinaryClassifier(GP):
             return self
         else:
             def negative_loglik(param):
-                logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, True, verbose)
+                logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, True)
                 m_gradLogZ = dict()
                 for key, value in gradLogZ.items():
                     m_gradLogZ[key] = -value
@@ -80,7 +80,7 @@ class GPBinaryClassifier(GP):
             return proba, var
         return proba
     
-    def log_marginal_likelihood(self, param=None, laplace_n_iter=10, return_grad=False, verbose=False):
+    def log_marginal_likelihood(self, param=None, laplace_n_iter=10, return_grad=False):
         if param is not None:
             # change the parameters of the GP
             self._kernel.set_param(param)
@@ -108,9 +108,6 @@ class GPBinaryClassifier(GP):
         a = b - self._sqrt_W @ solve(self._L.T, solve(self._L, self._sqrt_W @ K @ b))
         # then derive first the marginal log-likelihood
         logZ = -np.dot(a, f)/2 + loglik - log(self._L.diagonal()).sum()
-        if verbose:
-            print("log-likelihood=%.5f" % (logZ))
-            #print("for parameters {} \n".format(self.get_param()))
         if return_grad:
             # as for the gradient of the marginal
             grad_logZ = dict()
