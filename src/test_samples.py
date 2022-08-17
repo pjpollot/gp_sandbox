@@ -17,12 +17,11 @@ def test_optimization():
     
     x0 = {'x':1.2, 'y':-2.}
 
-    gd = GradientDescentOptimizer(f)
+    gd = GradientDescentOptimizer(f, learning_rate=.1)
     gd.minimize(x0)
 
     x_min = gd.get_result()
-    assert abs(x_min['x']) < eps
-    assert abs(x_min['y']) < eps
+    assert f(x_min)[0] < eps
 
 def test_RBF_kernel():
     eps = 1e-5
@@ -46,18 +45,42 @@ def test_RBF_kernel():
     (np.abs(cov1 - cov2) < eps).all()
 
 
-def test_marginal_loglik():
-    n_train = 100
-    X_train = np.random.uniform(size=(n_train, 2))
+def generate_dataset(including_testing_set=False):
     def separator(x):
         return 2*(x[1] > x[0]**2) - 1
+
+    n_train = 100
+    X_train = np.random.uniform(size=(n_train, 2))
     y_train = np.array([
         separator(x) for x in X_train
     ])
 
+    if including_testing_set:
+        n_test = 500
+        X_test = np.random.uniform(size=(n_test,2))
+        y_test = np.array([
+            separator(x) for x in X_test
+        ])
+        return X_train, X_test, y_train, y_test
+
+
+    return X_train, y_train
+
+def test_marginal_loglik():
+    X, y = generate_dataset()
     eps = 1e-2
 
-    gpc1 = GPBinaryClassifier(minimizer=None).fit(X_train, y_train)
-    gpc2 = skgp.GaussianProcessClassifier(optimizer=None).fit(X_train, y_train)
+    gpc1 = GPBinaryClassifier(minimizer=None).fit(X, y)
+    gpc2 = skgp.GaussianProcessClassifier(optimizer=None).fit(X, y)
 
     assert abs(gpc1.log_marginal_likelihood() - gpc2.log_marginal_likelihood()) < eps
+
+def test_fit():
+    X, y = generate_dataset()
+    eps = 1e-2
+
+    gpc1 = GPBinaryClassifier().fit(X, y, verbose=True)
+    gpc2 = skgp.GaussianProcessClassifier().fit(X, y)
+
+    assert gpc1.log_marginal_likelihood() + eps >= gpc2.log_marginal_likelihood()
+

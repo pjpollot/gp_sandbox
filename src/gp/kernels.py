@@ -41,10 +41,9 @@ class RBF(Kernel):
         else:
             dists = cdist(X, Y, metric='sqeuclidean')
         K = exp(2*self._param['log_sigma'] - exp(-2*self._param['log_l']) * dists/2)
-        print(dists)
         if return_grad:
             grad_K = dict()
-            grad_K['log_sigma'] = 2*K
             grad_K['log_l'] = exp(-2*self._param['log_l'])*np.multiply(dists, K)
+            grad_K['log_sigma'] = 2*K
             return K, grad_K
         return K

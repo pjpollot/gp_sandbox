@@ -31,7 +31,7 @@ class GradientBasedOptimizer(Optimizer):
 # ----------------------------------------------
 
 class GradientDescentOptimizer(GradientBasedOptimizer):
-    def __init__(self, obj_func_and_grad=None, learning_rate=.1):
+    def __init__(self, obj_func_and_grad=None, learning_rate=.01):
         super().__init__(obj_func_and_grad)
         self._lr = learning_rate 
     

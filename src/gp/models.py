@@ -110,6 +110,7 @@ class GPBinaryClassifier(GP):
         logZ = -np.dot(a, f)/2 + loglik - log(self._L.diagonal()).sum()
         if verbose:
             print("log-likelihood=%.5f" % (logZ))
+            #print("for parameters {} \n".format(self.get_param()))
         if return_grad:
             # as for the gradient of the marginal
             grad_logZ = dict()
@@ -121,7 +122,7 @@ class GPBinaryClassifier(GP):
                 q = dK @ self._grad_loglik
                 s3 = q - K @ R @ q
                 grad_logZ[parameter] = s1 + np.dot(s2, s3)
-                return logZ, grad_logZ
+            return logZ, grad_logZ
         return logZ
     
     def __compute_mode_cov_gradcov(self, laplace_n_iter):
