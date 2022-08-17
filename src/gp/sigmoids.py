@@ -3,12 +3,12 @@ from numpy import exp
 
 class Sigmoid(metaclass=ABCMeta):
     @abstractmethod
-    def evaluate(self, z, return_log_derivatives):
+    def __call__(self, z, return_log_derivatives=False):
         pass
 
 # The standard logistic function
 class Logistic(Sigmoid):
-    def evaluate(self, z, return_log_derivatives=False):
+    def __call__(self, z, return_log_derivatives=False):
         s = 1/(1+exp(-z))
 
         if return_log_derivatives:
