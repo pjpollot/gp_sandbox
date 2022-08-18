@@ -28,7 +28,21 @@ class GradientBasedOptimizer(Optimizer):
         self._obj_and_grad = obj_func_and_grad
         return self
 
-# ----------------------------------------------
+# ------------------------ BAYESIAN OPTIMIZATION MODULES -----------
+
+class BOModule(Optimizer):
+    def __init__(self, black_box_objective_function):
+        super().__init__()
+        self._objective = black_box_objective_function
+        self._objective_dataset = None
+    
+    @abstractmethod
+    def acquisition_maximization(self):
+        pass
+
+
+
+# ------------------------ CLASSIC OPTIMIZERS ----------------------
 
 class GradientDescentOptimizer(GradientBasedOptimizer):
     def __init__(self, obj_func_and_grad=None, learning_rate=.01):
