@@ -4,7 +4,7 @@ from setuptools import setup
 
 AUTHOR = 'Pierre-Jean POLLOT'
 
-EMAIL = 'pierre-jean.pollot@laposte.net'
+EMAIL = ''
 
 VERSION = '0.1.0'
 
@@ -21,9 +21,9 @@ SCRIPTS = [
 
 ]
 
-URL = ''
+URL = 'https://github.com/pjpollot/gp_sandbox'
 
-DESCRIPTION = ''
+DESCRIPTION = 'A Python package towards Gaussian Processes and Bayesian Optimization'
 
 packages = [
     MAIN_PACKAGE + '.' + package for package in SUB_PACKAGES
