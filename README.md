@@ -1,9 +1,19 @@
 # gp_sandbox 
-Sandbox project towards Gaussian Processes
+Sandbox project towards Gaussian Processes and Bayesian Optimization. The package is still in Work in Progress but some tools are already available.
 
-## Features in WIP 
+## Build then install the package
+```sh
+# install the requirement using your current version of Python and pip
+pip install -r requirements.txt
 
-### GP Binary Classifier
+# build the package from the main directory
+python setup.py build
 
-- Hyperparameters optimization.
-- Performance check.
+# install the package
+pip install .
+```
+
+Once it is done, you can freely use the modules using the following import:
+```python
+import gp_sandbox
+```
