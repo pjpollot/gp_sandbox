@@ -8,8 +8,8 @@ from scipy.stats import multivariate_normal
 
 from .sigmoids import Logistic, Sigmoid
 from .kernels import RBF, Kernel
-from utils.misc import extract_diagonal_matrix, hermite_quadrature
-from optimization.gradient_based import GradientBasedOptimizer, GradientDescentOptimizer
+from ..utils.misc import extract_diagonal_matrix, hermite_quadrature
+from ..optimization.gradient_based import GradientBasedOptimizer, GradientDescentOptimizer
 
 # Abstract GP class
 class GP(metaclass=ABCMeta):
