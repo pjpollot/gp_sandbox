@@ -5,17 +5,16 @@ from numpy import identity
 from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
 from scipy.stats import multivariate_normal
+from scipy.optimize import minimize
 
 from .sigmoids import Logistic, Sigmoid
 from .kernels import RBF, Kernel
 from ..utils.misc import extract_diagonal_matrix, hermite_quadrature
-from ..optimization.gradient_based import GradientBasedOptimizer, GradientDescentOptimizer
 
 # Abstract GP class
 class GP(metaclass=ABCMeta):
-    def __init__(self, kernel_function: Kernel, minimizer: GradientBasedOptimizer):
+    def __init__(self, kernel_function: Kernel):
         self._kernel = kernel_function
-        self._minimizer = minimizer
         # the training set information
         self._n = 0
         self._X = None
@@ -45,33 +44,44 @@ class GP(metaclass=ABCMeta):
     def sample(self, X, size=1):
         pass
 
+    def __param_to_vector(self, param):
+        d = len(param)
+        li = list(param.items())
+        param_vector = np.zeros(d)
+        for k in range(d):
+            param_vector[k] = li[k][1]
+        return param_vector
+
+    def __vector_to_param(self, param_vector):
+        param = dict()
+        k = 0
+        for key in self._kernel.get_param():
+            param[key] = param_vector[k]
+            k += 1
+        return param
+
 # GP Binary Classifier
 class GPBinaryClassifier(GP):
-    def __init__(self, kernel_function=RBF(), sigmoid_function=Logistic(), minimizer=GradientDescentOptimizer()):
-        super().__init__(kernel_function, minimizer)
+    def __init__(self, kernel_function=RBF(), sigmoid_function=Logistic()):
+        super().__init__(kernel_function)
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
         self._grad_loglik = None
 
-    def fit(self, X, y, laplace_n_iter=10, optim_n_iter=50):
+    def fit(self, X, y, laplace_n_iter=10):
         super().fit(X, y)
         # define the objective function and its gradient
-        if self._minimizer is None:
-            # If there is no optimizer, then there is no optimization
-            return self
-        else:
-            def negative_loglik(param):
-                logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, True)
-                m_gradLogZ = dict()
-                for key, value in gradLogZ.items():
-                    m_gradLogZ[key] = -value
-                return -logZ, m_gradLogZ
-            # then minimize it
-            self._minimizer.set_objective_and_gradient(negative_loglik).minimize(
-                x0=self._kernel._param, 
-                n_iter=optim_n_iter
-            )
-            return self
+        def negative_loglik(param_vector):
+            param = self.__vector_to_param(param_vector)
+            logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, True)
+            m_gradLogZ = dict()
+            for key, value in gradLogZ.items():
+                m_gradLogZ[key] = -value
+            return -logZ, self.__param_to_vector(m_gradLogZ)
+        # then minimize it
+        param_vector0 = self.__param_to_vector(self._kernel.get_param())
+        minimize(fun=negative_loglik, x0=param_vector0, method='BFGS', jac=True)
+        return self
     
     def predict(self, X, return_mean_var=False, hermite_quad_deg=10):
         p = len(X)
