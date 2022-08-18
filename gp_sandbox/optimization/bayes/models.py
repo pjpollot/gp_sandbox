@@ -1,8 +1,11 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
-from scipy.optimize import Bounds
+import scipy
+import scipy.optimize as opt
+from sklearn.gaussian_process import GaussianProcessRegressor
 
-from .abstract import Optimizer
+from ..abstract import Optimizer
+from .acquisition_functions import expected_improvement
 
 def constraints_all_satisfied(constraints_values) -> bool:
     for c in constraints_values:
@@ -13,7 +16,7 @@ def constraints_all_satisfied(constraints_values) -> bool:
     return True
 
 class BOModule(Optimizer, metaclass=ABCMeta):
-    def __init__(self, black_box_objective_function, bounds: Bounds, black_box_constraints=None):
+    def __init__(self, black_box_objective_function, bounds: scipy.optimize.Bounds, black_box_constraints=None):
         super().__init__()
 
         self._X = None
@@ -46,18 +49,18 @@ class BOModule(Optimizer, metaclass=ABCMeta):
             x_new = self.acquisition_maximization()
             f_new = self._objective(x_new)
 
-            self._X = np.concatenate((self._X, x_new))
-            self._objective_dataset = np.concatenate((self._objective_dataset, f_new))
+            self._X = np.concatenate((self._X, [x_new]))
+            self._objective_dataset = np.concatenate((self._objective_dataset, [f_new]))
 
             if self._n_constraints > 0:
                 # if there are constraints
                 constraints_new = np.array([constraint(x_new) for constraint in self._constraints])
-                self._constraints_dataset = np.concatenate((self._constraints_dataset, constraints_new))
-                ## find the new minimum
-                if constraints_all_satisfied(constraints_new):
-                    if self._x_min == None or (f_new < self._f_min):
-                        self._x_min = x_new.copy()
-                        self._f_min = f_new
+                self._constraints_dataset = np.concatenate((self._constraints_dataset, [constraints_new]))
+
+            if verbose:
+                print('iteration %d: new objective evaluation=%.4f' % (it+1, f_new))
+
+        self.__find_minimum_from_dataset()
     
     def __find_minimum_from_dataset(self):
         if self._objective_dataset is None:
@@ -83,3 +86,21 @@ class BOModule(Optimizer, metaclass=ABCMeta):
                 if self._objective_dataset[k] < self._f_min:
                     self._x_min = self._X[k,:].copy()
                     self._f_min = self._objective_dataset[k]
+
+class EIAlgorithm(BOModule):
+    def __init__(self, black_box_objective_function, bounds: scipy.optimize.Bounds):
+        super().__init__(black_box_objective_function, bounds, None)
+    
+    def acquisition_maximization(self):
+        gp = GaussianProcessRegressor().fit(self._X, self._objective_dataset)
+        
+        def function_to_minimize(x):
+            X_to_pred = np.array([x])
+            mean, std = gp.predict(X_to_pred, return_std=True)
+            return -expected_improvement(self._f_min, mean, std)
+
+        res = opt.minimize(fun=function_to_minimize, x0=self._x_min)
+        return res.x
+    
+    def minimize(self, X_init, objective_init_dataset, n_iter=100, verbose=True):
+        return super().minimize(X_init, objective_init_dataset, None, n_iter, verbose)

@@ -7,7 +7,7 @@ class Optimizer(metaclass=ABCMeta):
     
     def get_result(self, return_objective=False):
         if return_objective:
-            return self._f_min, self._x_min
+            return self._x_min, self._f_min
         else:
             return self._x_min
     

@@ -14,6 +14,7 @@ SUB_PACKAGES = [
     'test',
     'gaussian_processes',
     'optimization',
+    'optimization.bayes',
     'utils',
 ]
 
