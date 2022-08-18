@@ -13,7 +13,7 @@ python setup.py build
 pip install .
 ```
 
-Once it is done, you can freely use the modules using the following import:
+Once it is done, you can freely use the modules by importing the package
 ```python
 import gp_sandbox
 ```
