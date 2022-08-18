@@ -1,22 +1,7 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
 
-# ---------- ABSTRACT CLASSES ---------------
-
-class Optimizer(metaclass=ABCMeta):
-    def __init__(self):
-        self._x_min = None
-        self._f_min = None
-    
-    def get_result(self, return_objective=False):
-        if return_objective:
-            return self._f_min, self._x_min
-        else:
-            return self._x_min
-    
-    @abstractmethod
-    def minimize(self, x0: dict, n_iter, verbose: bool):
-        pass
+from .abstract import Optimizer
 
 class GradientBasedOptimizer(Optimizer):
     def __init__(self, obj_func_and_grad=None):
@@ -27,20 +12,6 @@ class GradientBasedOptimizer(Optimizer):
     def set_objective_and_gradient(self, obj_func_and_grad):
         self._obj_and_grad = obj_func_and_grad
         return self
-
-# ------------------------ BAYESIAN OPTIMIZATION MODULES -----------
-
-class BOModule(Optimizer):
-    def __init__(self, black_box_objective_function):
-        super().__init__()
-        self._objective = black_box_objective_function
-        self._objective_dataset = None
-    
-    @abstractmethod
-    def acquisition_maximization(self):
-        pass
-
-
 
 # ------------------------ CLASSIC OPTIMIZERS ----------------------
 

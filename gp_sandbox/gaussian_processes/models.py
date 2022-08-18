@@ -1,14 +1,15 @@
 from abc import ABCMeta, abstractmethod
+
 import numpy as np
 from numpy import identity
 from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
 from scipy.stats import multivariate_normal
 
-from .optimization import GradientBasedOptimizer, GradientDescentOptimizer
 from .sigmoids import Logistic, Sigmoid
 from .kernels import RBF, Kernel
-from .utils import extract_diagonal_matrix, hermite_quadrature
+from utils.misc import extract_diagonal_matrix, hermite_quadrature
+from optimization.gradient_based import GradientBasedOptimizer, GradientDescentOptimizer
 
 # Abstract GP class
 class GP(metaclass=ABCMeta):

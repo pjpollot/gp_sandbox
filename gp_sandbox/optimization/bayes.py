@@ -1,9 +1,8 @@
 from abc import ABCMeta, abstractmethod
 import numpy as np
-import scipy.optimize as opt
 from scipy.optimize import Bounds
 
-from .optimization import Optimizer
+from .abstract import Optimizer
 
 def constraints_all_satisfied(constraints_values) -> bool:
     for c in constraints_values:
@@ -59,10 +58,7 @@ class BOModule(Optimizer, metaclass=ABCMeta):
                     if self._x_min == None or (f_new < self._f_min):
                         self._x_min = x_new.copy()
                         self._f_min = f_new
-
-
-
-
+    
     def __find_minimum_from_dataset(self):
         if self._objective_dataset is None:
             return None

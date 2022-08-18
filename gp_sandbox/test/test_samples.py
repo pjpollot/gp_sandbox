@@ -1,9 +1,9 @@
 import pytest
 import numpy as np
 
-from gp.kernels import RBF
-from gp.models import GPBinaryClassifier
-from gp.optimization import GradientDescentOptimizer
+#from gaussian_processes.kernels import RBF
+#from gaussian_processes import GPBinaryClassifier
+from optimization.gradient_based import GradientDescentOptimizer
 
 import sklearn.gaussian_process as skgp
 
