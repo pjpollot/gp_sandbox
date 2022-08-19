@@ -25,11 +25,21 @@ class GP(metaclass=ABCMeta):
     def get_param(self):
         return self._kernel.get_param()
 
-    @abstractmethod
     def fit(self, X, y):
         self._n = len(y)
         self._X = X.copy()
         self._y = y.copy()
+        # define the objective function and its gradient
+        def negative_loglik(param_vector):
+            param = self.__vector_to_param(param_vector)
+            logZ, gradLogZ = self.log_marginal_likelihood(param, True)
+            m_gradLogZ = dict()
+            for key, value in gradLogZ.items():
+                m_gradLogZ[key] = -value
+            return -logZ, self.__param_to_vector(m_gradLogZ)
+        # then minimize it
+        param_vector0 = self.__param_to_vector(self._kernel.get_param())
+        minimize(fun=negative_loglik, x0=param_vector0, method='BFGS', jac=True)
         return self
     
     @abstractmethod
@@ -44,7 +54,7 @@ class GP(metaclass=ABCMeta):
     def sample(self, X, size=1):
         pass
 
-    def __param_to_vector(self, param):
+    def __param_to_vector(self, param: dict):
         d = len(param)
         li = list(param.items())
         param_vector = np.zeros(d)
@@ -62,26 +72,13 @@ class GP(metaclass=ABCMeta):
 
 # GP Binary Classifier
 class GPBinaryClassifier(GP):
-    def __init__(self, kernel_function=RBF(), sigmoid_function=Logistic()):
+    def __init__(self, kernel_function=RBF(), sigmoid_function=Logistic(), laplace_n_iter=10):
         super().__init__(kernel_function)
         self._sigmoid = sigmoid_function
         self._sqrt_W = None
         self._grad_loglik = None
+        self._laplace_n_iter = laplace_n_iter
 
-    def fit(self, X, y, laplace_n_iter=10):
-        super().fit(X, y)
-        # define the objective function and its gradient
-        def negative_loglik(param_vector):
-            param = self.__vector_to_param(param_vector)
-            logZ, gradLogZ = self.log_marginal_likelihood(param, laplace_n_iter, True)
-            m_gradLogZ = dict()
-            for key, value in gradLogZ.items():
-                m_gradLogZ[key] = -value
-            return -logZ, self.__param_to_vector(m_gradLogZ)
-        # then minimize it
-        param_vector0 = self.__param_to_vector(self._kernel.get_param())
-        minimize(fun=negative_loglik, x0=param_vector0, method='BFGS', jac=True)
-        return self
     
     def predict(self, X, return_mean_var=False, hermite_quad_deg=10):
         p = len(X)
@@ -106,12 +103,12 @@ class GPBinaryClassifier(GP):
             return proba, f_samples
         return proba
     
-    def log_marginal_likelihood(self, param=None, laplace_n_iter=10, return_grad=False):
+    def log_marginal_likelihood(self, param=None, return_grad=False):
         if param is not None:
             # change the parameters of the GP
             self._kernel.set_param(param)
         # compute the mode, the covariance and the gradient of the covariance
-        f, K, grad_K = self.__compute_mode_cov_gradcov(laplace_n_iter)
+        f, K, grad_K = self.__compute_mode_cov_gradcov()
         # start calculatations of the log marginal and its gradient
         W = np.zeros((self._n, self._n))
         self._sqrt_W = np.zeros((self._n, self._n))
@@ -148,7 +145,7 @@ class GPBinaryClassifier(GP):
             return logZ, grad_logZ
         return logZ
     
-    def __compute_mode_cov_gradcov(self, laplace_n_iter):
+    def __compute_mode_cov_gradcov(self):
         f = np.zeros(self._n)
         # we first calculate the covariance matrix and its gradient
         K, grad_K = self._kernel(self._X, return_grad=True)
@@ -158,7 +155,7 @@ class GPBinaryClassifier(GP):
         L = np.zeros((self._n, self._n))
         grad_loglik = np.zeros(self._n)
         ## start loop
-        for it in range(laplace_n_iter):
+        for it in range(self._laplace_n_iter):
             loglik = 0
             ## compute W, its sqrt, the log-likelihood and its gradient
             for i in range(self._n):

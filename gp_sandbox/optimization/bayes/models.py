@@ -4,7 +4,6 @@ import scipy
 import scipy.optimize as opt
 from sklearn.gaussian_process import GaussianProcessRegressor
 
-from ..abstract import Optimizer
 from .acquisition_functions import expected_improvement
 
 def constraints_all_satisfied(constraints_values) -> bool:
@@ -15,9 +14,10 @@ def constraints_all_satisfied(constraints_values) -> bool:
     # end loop: everything is == 1
     return True
 
-class BOModule(Optimizer, metaclass=ABCMeta):
+class BOModule(metaclass=ABCMeta):
     def __init__(self, black_box_objective_function, bounds: scipy.optimize.Bounds, black_box_constraints=None):
-        super().__init__()
+        self._x_min = None
+        self._f_min = None
 
         self._X = None
 
@@ -29,6 +29,12 @@ class BOModule(Optimizer, metaclass=ABCMeta):
             self._n_constraints = len(black_box_constraints)
         self._constraints = black_box_constraints
         self._constraints_dataset = None
+    
+    def get_result(self, return_objective=False):
+        if return_objective:
+            return self._x_min, self._f_min
+        else:
+            return self._x_min
     
     @abstractmethod
     def acquisition_maximization(self):
