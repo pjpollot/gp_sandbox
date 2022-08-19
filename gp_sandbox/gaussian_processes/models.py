@@ -2,10 +2,10 @@ from abc import ABCMeta, abstractmethod
 
 import numpy as np
 from numpy import identity
-from numpy.linalg import solve, cholesky
 from numpy import sqrt, log
 from scipy.stats import multivariate_normal
 from scipy.optimize import minimize
+from scipy.linalg import solve, cholesky
 
 from .sigmoids import Logistic, Sigmoid
 from .kernels import RBF, Kernel
@@ -127,7 +127,7 @@ class GPBinaryClassifier(GP):
             self._sqrt_W[i,i] = sqrt(W[i,i])
             grad3_loglik[i] = self._y[i] * lsppp
         # compute L, b and a
-        self._L = cholesky( identity(self._n) + self._sqrt_W @ K @ self._sqrt_W )
+        self._L = cholesky(identity(self._n) + self._sqrt_W @ K @ self._sqrt_W, lower=True)
         b = W @ f + self._grad_loglik
         a = b - self._sqrt_W @ solve(self._L.T, solve(self._L, self._sqrt_W @ K @ b))
         # then derive first the marginal log-likelihood
@@ -147,13 +147,12 @@ class GPBinaryClassifier(GP):
         return logZ
     
     def __compute_mode_cov_gradcov(self):
-        f = np.zeros(self._n)
+        f = np.zeros(self._n, dtype=np.float64)
         # we first calculate the covariance matrix and its gradient
         K, grad_K = self._kernel(self._X, return_grad=True)
         # then we start the estimation of the mode using the Newton algorithm
         W = np.zeros((self._n, self._n))
         sqrt_W = np.zeros((self._n, self._n))
-        L = np.zeros((self._n, self._n))
         grad_loglik = np.zeros(self._n)
         ## start loop
         for it in range(self._laplace_n_iter):
@@ -161,13 +160,13 @@ class GPBinaryClassifier(GP):
             ## compute W, its sqrt, the log-likelihood and its gradient
             for i in range(self._n):
                 z = self._y[i]*f[i]
-                s, lsp, lspp, lsppp = self._sigmoid(z, return_log_derivatives=True)
+                s, lsp, lspp, _ = self._sigmoid(z, return_log_derivatives=True)
                 loglik += log(s)
                 grad_loglik[i] = self._y[i] * lsp
                 W[i,i] = -lspp
                 sqrt_W[i,i] = sqrt(W[i,i])
             ## compute L, b and a
-            L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W )
+            L = cholesky( identity(self._n) + sqrt_W @ K @ sqrt_W , lower=True)
             b = W @ f + grad_loglik
             a = b - sqrt_W @ solve(L.T, solve(L, sqrt_W @ K @ b))
             ## then compute the next f
