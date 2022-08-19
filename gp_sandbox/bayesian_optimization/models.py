@@ -3,6 +3,7 @@ import numpy as np
 import scipy
 import scipy.optimize as opt
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
 
 from .acquisition_functions import expected_improvement
 
@@ -98,7 +99,8 @@ class EIAlgorithm(BOModule):
         super().__init__(black_box_objective_function, bounds, None)
     
     def acquisition_maximization(self):
-        gp = GaussianProcessRegressor().fit(self._X, self._objective_dataset)
+        ker = ConstantKernel()*RBF() + WhiteKernel()
+        gp = GaussianProcessRegressor(kernel=ker).fit(self._X, self._objective_dataset)
         
         def function_to_minimize(x):
             X_to_pred = np.array([x])
