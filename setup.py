@@ -13,8 +13,7 @@ MAIN_PACKAGE = 'gp_sandbox'
 SUB_PACKAGES = [
     'test',
     'gaussian_processes',
-    'optimization',
-    'optimization.bayes',
+    'bayesian_optimization',
     'utils',
 ]
 
