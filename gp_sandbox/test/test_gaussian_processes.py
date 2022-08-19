@@ -61,6 +61,19 @@ class GPBCTest(unittest.TestCase):
 
         self.assertAlmostEqual(gpc.log_marginal_likelihood(), gpc_check.log_marginal_likelihood(), places=6, msg='log-marginal-likelihood are not equal')
 
+    
+    def test_performance(self):
+        gpc = GPBinaryClassifier(kernel_function=self.kernel).fit(self.X_train, self.y_train)
+        gpc_check = sgp.GaussianProcessClassifier(kernel=self.kernel_check).fit(self.X_train, self.y_train)
+
+        proba = gpc.predict(self.X_test)
+        y_pred = 2*(proba >= .5) - 1
+
+        y_pred_check = gpc_check.predict(self.X_test)
+
+        n_success = (y_pred == self.y_test).sum()
+        n_success_check = (y_pred_check == self.y_test).sum()
+        self.assertGreaterEqual(n_success, n_success_check)
 
     def __assertMatrixAlmostEqual(self, M1, M2, n_decimals):
         n, p = M1.shape
