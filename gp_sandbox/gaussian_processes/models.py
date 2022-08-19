@@ -25,21 +25,22 @@ class GP(metaclass=ABCMeta):
     def get_param(self):
         return self._kernel.get_param()
 
-    def fit(self, X, y):
+    def fit(self, X, y, optimize_parameters=True):
         self._n = len(y)
         self._X = X.copy()
         self._y = y.copy()
-        # define the objective function and its gradient
-        def negative_loglik(param_vector):
-            param = self.__vector_to_param(param_vector)
-            logZ, gradLogZ = self.log_marginal_likelihood(param, True)
-            m_gradLogZ = dict()
-            for key, value in gradLogZ.items():
-                m_gradLogZ[key] = -value
-            return -logZ, self.__param_to_vector(m_gradLogZ)
-        # then minimize it
-        param_vector0 = self.__param_to_vector(self._kernel.get_param())
-        minimize(fun=negative_loglik, x0=param_vector0, method='BFGS', jac=True)
+        if optimize_parameters:
+            # define the objective function and its gradient
+            def negative_loglik(param_vector):
+                param = self.__vector_to_param(param_vector)
+                logZ, gradLogZ = self.log_marginal_likelihood(param, True)
+                m_gradLogZ = dict()
+                for key, value in gradLogZ.items():
+                    m_gradLogZ[key] = -value
+                return -logZ, self.__param_to_vector(m_gradLogZ)
+            # then minimize it
+            param_vector0 = self.__param_to_vector(self._kernel.get_param())
+            minimize(fun=negative_loglik, x0=param_vector0, method='BFGS', jac=True)
         return self
     
     @abstractmethod
