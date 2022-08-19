@@ -6,7 +6,7 @@ AUTHOR = 'Pierre-Jean POLLOT'
 
 EMAIL = ''
 
-VERSION = '0.1.0'
+VERSION = '1.0.0'
 
 MAIN_PACKAGE = 'gp_sandbox'
 

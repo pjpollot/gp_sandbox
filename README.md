@@ -17,3 +17,8 @@ Once it is done, you can freely use the modules by importing the package
 ```python
 import gp_sandbox
 ```
+
+For unit testings, type the following command
+```sh
+python -m unittest
+```
