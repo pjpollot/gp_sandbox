@@ -113,7 +113,6 @@ class GPBinaryClassifier(GP):
         # start calculatations of the log marginal and its gradient
         W = np.zeros((self._n, self._n))
         self._sqrt_W = np.zeros((self._n, self._n))
-        self._L = np.zeros((self._n, self._n))
         self._grad_loglik = np.zeros(self._n)
         grad3_loglik = np.zeros(self._n)
         loglik = 0
