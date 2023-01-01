@@ -25,12 +25,12 @@ URL = 'https://github.com/pjpollot/gp_sandbox'
 
 DESCRIPTION = 'A Python package towards Gaussian Processes and Bayesian Optimization'
 
+
+# -------------------- SCRIPT ---------------------
+
 packages = [
     MAIN_PACKAGE + '.' + package for package in SUB_PACKAGES
 ]
-
-
-# -------------------- RUNNING ---------------------
 
 setup(
     name=MAIN_PACKAGE,
